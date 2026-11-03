@@ -10,7 +10,6 @@ import { Locations } from '@/components/landing/Locations';
 import { Testimonials } from '@/components/landing/Testimonials';
 import { Faq } from '@/components/landing/Faq';
 import { Footer } from '@/components/landing/Footer';
-import { AiConsultant } from '@/components/AiConsultant';
 import { safeStorage } from '@/lib/safeStorage';
 import { setPendingTariff, type TariffId } from '@/lib/pendingTariff';
 
@@ -39,7 +38,6 @@ const LandingPage = () => {
       <Testimonials t={t} />
       <section id="faq"><Faq t={t} /></section>
       <Footer t={t} lang={lang} setLang={setLang} />
-      <AiConsultant />
     </div>
   );
 };

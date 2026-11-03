@@ -4,7 +4,7 @@ import { validateSession } from '../_shared/session.ts'
 import { multicardRequest, sumToTiyin, TARIFFS, COURSE_MXIK, COURSE_PACKAGE_CODE } from '../_shared/multicard.ts'
 
 const SITE_URL = 'https://prava-on.com/#/profile'
-const WEBHOOK_URL = 'https://ziqzprosgzevkdfwyotl.supabase.co/functions/v1/payment-webhook'
+const WEBHOOK_URL = 'https://vywzulllyxlhynxgmpqc.supabase.co/functions/v1/payment-webhook'
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

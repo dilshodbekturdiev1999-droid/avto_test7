@@ -16,11 +16,11 @@ jobs:
       - name: Deploy all functions (with retry on transient Supabase errors)
         run: |
           set -e
-          functions="progress-sync phone-check get-data auth-register auth-login session-check friends avatar-upload phone-verify telegram-webhook duels auth-reset-password user-count preview-data consultant-lookup client-log payment-create-invoice payment-webhook admin-storage-cache-fix admin-expire-access admin-reconcile-payments"
+          functions="progress-sync phone-check get-data auth-register auth-login session-check friends avatar-upload phone-verify telegram-webhook duels auth-reset-password user-count preview-data client-log payment-create-invoice payment-webhook admin-storage-cache-fix admin-expire-access admin-reconcile-payments"
           for fn in $functions; do
             echo "=== Deploying $fn ==="
             attempt=1
-            until supabase functions deploy "$fn" --no-verify-jwt --project-ref ziqzprosgzevkdfwyotl; do
+            until supabase functions deploy "$fn" --no-verify-jwt --project-ref vywzulllyxlhynxgmpqc; do
               if [ "$attempt" -ge 5 ]; then
                 echo "::error::Failed to deploy $fn after $attempt attempts"
                 exit 1

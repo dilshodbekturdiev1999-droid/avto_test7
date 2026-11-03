@@ -5,9 +5,9 @@ import { createClient } from '@supabase/supabase-js';
 // questions/answers/app_users live in this project. Kept separate from
 // '@/integrations/supabase/client' (a different project this app's owner
 // doesn't administer) so functions.invoke() resolves to the right place.
-const FUNCTIONS_SUPABASE_URL = 'https://ziqzprosgzevkdfwyotl.supabase.co';
+const FUNCTIONS_SUPABASE_URL = 'https://vywzulllyxlhynxgmpqc.supabase.co';
 const FUNCTIONS_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppcXpwcm9zZ3pldmtkZnd5b3RsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNDAwMzAsImV4cCI6MjA4MTkxNjAzMH0.3-4COwffhK2ZU0kU-bnlCWPytsEzRxpMu3SkGg8m7BU';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5d3p1bGxseXhsaHlueGdtcHFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzODc1OTAsImV4cCI6MjEwNzk2MzU5MH0._IC5BYsM2qhmDQIfa4d2yj-tyG5cbT_aGzQzFphNdSk';
 
 export const functionsSupabase = createClient(FUNCTIONS_SUPABASE_URL, FUNCTIONS_SUPABASE_ANON_KEY);
 

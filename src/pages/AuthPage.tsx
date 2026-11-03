@@ -9,7 +9,6 @@ import { getDeviceId } from '@/lib/deviceId';
 import { migrateLocalProgressToServer, hydrateProgressFromServer } from '@/lib/progress';
 import { setAccessInfo } from '@/hooks/useAuth';
 import { Logo } from '@/components/landing/Logo';
-import { AiConsultant } from '@/components/AiConsultant';
 import { safeStorage } from '@/lib/safeStorage';
 import { logClientError } from '@/lib/clientLog';
 import { takePendingTariff } from '@/lib/pendingTariff';
@@ -1017,7 +1016,6 @@ const AuthPage = () => {
           )}
         </div>
       </div>
-      <AiConsultant variant="student" />
     </div>
   );
 };

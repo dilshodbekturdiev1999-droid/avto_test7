@@ -3,7 +3,7 @@ import { safeStorage } from '@/lib/safeStorage';
 // Fire-and-forget error telemetry (see supabase/functions/client-log).
 // sendBeacon survives the tab navigating away and needs no CORS preflight as
 // long as the payload is a simple type, hence text/plain instead of JSON.
-const LOG_URL = 'https://ziqzprosgzevkdfwyotl.supabase.co/functions/v1/client-log';
+const LOG_URL = 'https://vywzulllyxlhynxgmpqc.supabase.co/functions/v1/client-log';
 
 export function logClientError(stage: string, code: string | null, detail?: string): void {
   try {
