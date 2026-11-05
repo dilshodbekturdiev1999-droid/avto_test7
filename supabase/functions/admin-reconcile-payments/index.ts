@@ -34,14 +34,24 @@ Deno.serve(async (req) => {
 
     const { data: payments, error } = await db
       .from('payments')
-      .select('id, phone, tariff')
+      .select('id, phone, tariff, created_at')
       .eq('status', 'success')
     if (error) throw error
+
+    // Only payments whose paid period is still running can need a re-grant.
+    // Without this, every historical payment whose access has simply expired
+    // would be granted again on every run.
+    const PERIOD_DAYS: Record<string, number> = { standard: 14, pro: 30, max: 30 }
+    const now = Date.now()
+    const live = (payments ?? []).filter((p) => {
+      const days = PERIOD_DAYS[p.tariff]
+      return !!days && new Date(p.created_at).getTime() + days * 86400000 > now
+    })
 
     const fixed: { payment_id: string; phone: string; tariff: string }[] = []
     const failed: { payment_id: string; phone: string; error: string }[] = []
 
-    for (const p of payments ?? []) {
+    for (const p of live) {
       const access = await getAccessInfo(db, p.phone)
       if (access.fullAccess) continue // already has valid access -- nothing to do
 
@@ -67,7 +77,7 @@ Deno.serve(async (req) => {
       await sendAdminAlert(`admin-reconcile-payments:\n${lines.join('\n\n')}`)
     }
 
-    return json({ data: { checked: payments?.length ?? 0, fixed: fixed.length, failed: failed.length } })
+    return json({ data: { checked: live.length, fixed: fixed.length, failed: failed.length } })
   } catch (error) {
     console.error('admin-reconcile-payments error:', error)
     return json({ error: 'internal_error', detail: String(error) }, 500)
