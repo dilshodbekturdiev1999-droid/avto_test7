@@ -54,7 +54,8 @@ Deno.serve(async (req) => {
         ops.sort((a, b) => (a.at ?? now) - (b.at ?? now))
 
         for (const op of ops) {
-          const at = new Date(Math.min(op.at ?? now, now)).toISOString()
+          // Device clocks drift, so only a timestamp far in the future is cut back; a small drift keeps the order.
+          const at = new Date(Math.min(op.at ?? now, now + 10 * 60 * 1000)).toISOString()
 
           if (op.type === 'answer') {
             if (typeof op.question_id !== 'string' || !UUID.test(op.question_id)) continue
