@@ -3,7 +3,7 @@ import type { QuestionWithAnswers } from '@/types/database';
 import placeholder1 from '@/assets/avto.jpg';
 import placeholder2 from '@/assets/avto1.jpg';
 import placeholder3 from '@/assets/avto2.jpg';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useT } from '@/hooks/useT';
 
@@ -11,12 +11,14 @@ interface QuestionViewProps {
   question: QuestionWithAnswers;
   selectedAnswer: string | null;
   onSelectAnswer: (answerId: string) => void;
+  /** Small control shown at the end of the question line (e.g. a bookmark). */
+  headerAction?: ReactNode;
 }
 
 const ANSWER_LABELS = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8'];
 const FALLBACK_IMAGES = [placeholder1, placeholder2, placeholder3];
 
-export function QuestionView({ question, selectedAnswer, onSelectAnswer }: QuestionViewProps) {
+export function QuestionView({ question, selectedAnswer, onSelectAnswer, headerAction }: QuestionViewProps) {
   // Use image_url from server proxy, fall back to image_path for backwards compat
   const imageUrl = (question as any).image_url || null;
   const [zoomOpen, setZoomOpen] = useState(false);
@@ -55,16 +57,17 @@ export function QuestionView({ question, selectedAnswer, onSelectAnswer }: Quest
   return (
     <div className="bg-card rounded-2xl border border-border overflow-hidden animate-scale-in">
       {/* Question text */}
-      <div className="p-6 border-b border-border">
-        <h2 className="text-xl font-semibold text-foreground leading-relaxed">
+      <div className="flex items-start gap-3 border-b border-border p-4 sm:p-6 short:p-3">
+        <h2 className="flex-1 text-lg font-semibold leading-snug text-foreground sm:text-xl sm:leading-relaxed short:text-base">
           {question.question_uz_cyr}
         </h2>
+        {headerAction}
       </div>
 
       {/* Content: Image + Answers */}
-      <div className="flex flex-col lg:flex-row">
+      <div className="flex flex-col lg:flex-row short:flex-row">
         {/* Image - always shown, either question image or logo */}
-        <div className="lg:w-3/5 p-4">
+        <div className="p-3 sm:p-4 lg:w-3/5 short:w-1/2 short:p-2">
           {imageUrl ? (
             <button
               type="button"
@@ -75,14 +78,14 @@ export function QuestionView({ question, selectedAnswer, onSelectAnswer }: Quest
               <img
                 src={imageUrl}
                 alt={t('Савол расми', 'Изображение вопроса')}
-                className="w-full h-auto rounded-xl max-h-[400px] object-contain"
+                className="w-full h-auto rounded-xl max-h-[min(400px,38dvh)] object-contain short:max-h-[48dvh]"
               />
             </button>
           ) : (
             <img
               src={fallbackImage}
               alt="AvtoTest 7"
-              className="w-full h-auto rounded-xl max-h-[400px] object-cover"
+              className="w-full h-auto rounded-xl max-h-[min(400px,38dvh)] object-cover short:max-h-[48dvh]"
             />
           )}
 
@@ -100,7 +103,7 @@ export function QuestionView({ question, selectedAnswer, onSelectAnswer }: Quest
         </div>
 
         {/* Answers */}
-        <div className="flex-1 p-4 space-y-3">
+        <div className="flex-1 space-y-2 p-3 sm:space-y-3 sm:p-4 short:p-2">
           {question.answers.map((answer, idx) => {
             const isSelected = selectedAnswer === answer.id;
             const isCorrect = isAnswerCorrect(answer.is_correct);
@@ -128,14 +131,14 @@ export function QuestionView({ question, selectedAnswer, onSelectAnswer }: Quest
                 onClick={() => onSelectAnswer(answer.id)}
                 disabled={selectedAnswer !== null}
                 className={cn(
-                  "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200 text-left",
+                  "w-full flex items-center gap-3 p-3 sm:gap-4 sm:p-4 rounded-xl border-2 transition-all duration-200 text-left",
                   buttonStyle,
                   selectedAnswer === null && "hover:scale-[1.01]",
                   selectedAnswer !== null && !isSelected && !isCorrect && "opacity-60"
                 )}
               >
                 <span className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0",
+                  "w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0",
                   labelStyle
                 )}>
                   {ANSWER_LABELS[idx] || `F${idx + 1}`}

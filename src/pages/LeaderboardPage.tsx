@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Loader2, Swords, Check, X } from 'lucide-react';
+import { Trophy, Loader2, Swords, Check, X, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageShell } from '@/components/PageShell';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { useLeaderboard, useDuelList, useChallengeFriend, useRespondDuel } from '@/hooks/useDuels';
+import { useLeaderboard, useDuelList, useChallengeFriend, useRespondDuel, useRandomMatch } from '@/hooks/useDuels';
 import { useFriendsList } from '@/hooks/useFriends';
 import { useOnlineUsers } from '@/hooks/usePresence';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,7 @@ const LeaderboardPage = () => {
   const respondDuel = useRespondDuel();
   const t = useT();
   const isRu = getTestLang() === 'ru';
+  const match = useRandomMatch((duelId) => navigate(`/duel/${duelId}`));
 
   const handleChallenge = (targetLogin: string) => {
     challengeFriend.mutate(targetLogin, {
@@ -39,6 +40,41 @@ const LeaderboardPage = () => {
 
   return (
     <PageShell title={t('Турнир', 'Турнир')} icon={<Trophy className="w-5 h-5 text-primary" />} onBack={() => navigate(-1)}>
+      {/* random opponent: the system pairs the student with anyone searching right now */}
+      <div className="glass-card rounded-3xl p-6 mb-6 text-center">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
+          {match.state === 'searching' ? <Loader2 className="w-7 h-7 animate-spin" /> : <Search className="w-7 h-7" />}
+        </div>
+        <h2 className="font-bold text-foreground font-display mb-1">
+          {match.state === 'searching'
+            ? t('Рақиб излаяпмиз...', 'Ищем соперника...')
+            : t('Тасодифий рақиб', 'Случайный соперник')}
+        </h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          {match.state === 'searching'
+            ? `${match.seconds} ${t('сония', 'сек')} · ${t('ҳозир онлайн бўлганлар орасидан', 'среди тех, кто сейчас онлайн')}`
+            : match.state === 'nobody'
+              ? t('Ҳозирча ҳеч ким топилмади. Бироздан кейин уриниб кўринг ёки дўстингизни чақиринг.', 'Пока никого нет. Попробуйте позже или вызовите друга.')
+              : match.state === 'locked'
+                ? t('Тасодифий рақиб учун тўлиқ тариф керак.', 'Случайный соперник доступен с полным тарифом.')
+                : match.state === 'limit'
+                  ? t('Бир соатда жуда кўп мусобақа. Бироз кутинг.', 'Слишком много дуэлей за час. Немного подождите.')
+                  : match.state === 'error'
+                    ? t('Уланишда хатолик. Қайта уриниб кўринг.', 'Ошибка соединения. Попробуйте ещё раз.')
+                    : t('Тизим сизга ҳозир онлайн бўлган рақибни танлайди', 'Система сама подберёт того, кто сейчас в сети')}
+        </p>
+        {match.state === 'searching' ? (
+          <Button variant="outline" onClick={match.cancel}>
+            {t('Бекор қилиш', 'Отмена')}
+          </Button>
+        ) : (
+          <Button onClick={match.start} disabled={match.state === 'locked'}>
+            <Swords className="w-4 h-4 mr-2" />
+            {match.state === 'nobody' || match.state === 'error' ? t('Яна излаш', 'Искать снова') : t('Рақиб излаш', 'Найти соперника')}
+          </Button>
+        )}
+      </div>
+
       <div className="grid md:grid-cols-2 gap-5 items-start mb-6">
       {(duelData?.incoming?.length ?? 0) > 0 && (
         <div className="glass-card rounded-3xl p-6">

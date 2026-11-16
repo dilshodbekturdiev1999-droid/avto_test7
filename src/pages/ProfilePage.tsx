@@ -15,12 +15,14 @@ import { useUserStats } from '@/hooks/useUserStats';
 import { safeStorage } from '@/lib/safeStorage';
 import { AccessExpiryBadge } from '@/components/AccessExpiryBadge';
 import { useT } from '@/hooks/useT';
+import { DeleteAccountDialog } from '@/components/DeleteAccountDialog';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     safeStorage.getItem('avatar_url')
   );
@@ -237,6 +239,12 @@ const ProfilePage = () => {
         </>
       )}
       </div>
+      <div className="mt-8 text-center">
+        <button type="button" onClick={() => setDeleteOpen(true)} className="text-sm text-muted-foreground underline hover:text-destructive">
+          {t('Ҳисобни ўчириш', 'Удалить аккаунт')}
+        </button>
+      </div>
+      <DeleteAccountDialog open={deleteOpen} onOpenChange={setDeleteOpen} />
     </PageShell>
   );
 };

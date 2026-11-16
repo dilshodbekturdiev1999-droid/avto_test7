@@ -12,7 +12,8 @@ import { useFriendsList } from '@/hooks/useFriends';
 import { useDuelList } from '@/hooks/useDuels';
 import { useTestLang } from '@/hooks/useTestLang';
 import { useT } from '@/hooks/useT';
-import { LogOut, User, Trophy, BookOpen } from 'lucide-react';
+import { LogOut, User, Trophy, BookOpen, ClipboardX, Layers, Bookmark, Search, MapPin, NotebookText } from 'lucide-react';
+import { getMistakeIds, getSavedCount, useStudyVersion } from '@/features/study/studyState';
 import { UserCountBadge } from '@/components/UserCountBadge';
 import { AccessExpiryBadge } from '@/components/AccessExpiryBadge';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,9 @@ const Index = () => {
   const { data: duelData } = useDuelList();
   const friendRequestCount = friendsData?.incoming?.length ?? 0;
   const duelInviteCount = duelData?.incoming?.length ?? 0;
+  useStudyVersion();
+  const mistakeCount = getMistakeIds().length;
+  const savedCount = getSavedCount();
 
   const totalTopics = allTopics?.length ?? 0;
   const completedTopics = allTopics?.filter((tp) => getTopicProgress(tp.id)?.completed).length ?? 0;
@@ -128,6 +132,31 @@ const Index = () => {
               <p className="text-sm text-muted-foreground mt-1">{t('мавзу тугатилган', 'тем завершено')}</p>
             </div>
           </div>
+        </div>
+
+        {/* study tools */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+          {[
+            { to: '/mistakes', icon: ClipboardX, label: 'Mening Xatolarim', badge: mistakeCount },
+            { to: '/all-questions', icon: Layers, label: '1200+ savollar', badge: 0 },
+            { to: '/saved', icon: Bookmark, label: 'Saqlanganlar', badge: savedCount },
+            { to: '/search', icon: Search, label: 'Qidiruv', badge: 0 },
+            { to: '/cheat-sheets', icon: NotebookText, label: 'Shpargalkalar', badge: 0 },
+            { to: '/exam-centers', icon: MapPin, label: 'Imtihon markazlari', badge: 0 },
+          ].map(({ to, icon: Icon, label, badge }) => (
+            <button
+              key={to}
+              type="button"
+              onClick={() => navigate(to)}
+              className="relative glass-card rounded-2xl p-4 text-left flex flex-col gap-3 hover:border-primary/40 transition-colors"
+            >
+              <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Icon className="w-5 h-5" /></span>
+              <span className="font-display font-bold text-sm text-foreground leading-tight">{label}</span>
+              {badge > 0 && (
+                <span className="absolute top-3 right-3 flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">{badge}</span>
+              )}
+            </button>
+          ))}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

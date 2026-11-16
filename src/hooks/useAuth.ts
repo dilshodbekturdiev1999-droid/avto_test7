@@ -4,6 +4,8 @@ import { useToast } from '@/hooks/use-toast';
 import { invokeFunction } from '@/integrations/supabase/functionsClient';
 import { getDeviceId } from '@/lib/deviceId';
 import { hydrateProgressFromServer } from '@/lib/progress';
+import { clearStudyState } from '@/features/study/studyState';
+import { clearStudyQueue, hydrateStudyFromServer } from '@/features/study/studySync';
 import { safeStorage } from '@/lib/safeStorage';
 import { useUserEvent } from '@/hooks/usePresence';
 
@@ -98,6 +100,8 @@ export function setAccessInfo(
 }
 
 export function clearSession(): void {
+  clearStudyState();
+  clearStudyQueue();
   safeStorage.removeItem('session_token');
   safeStorage.removeItem('login');
   safeStorage.removeItem('user_id');
@@ -156,6 +160,7 @@ export function useAuth() {
     if (data?.user && !hydratedRef.current) {
       hydratedRef.current = true;
       hydrateProgressFromServer();
+      void hydrateStudyFromServer();
     }
   }, [logOut]);
 

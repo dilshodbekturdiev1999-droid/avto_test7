@@ -364,3 +364,12 @@
   .reveal { opacity: 1 !important; transform: none !important; filter: none !important; }
   .split-word { opacity: 1 !important; transform: none !important; filter: none !important; }
 }
+
+/* Question screens fill exactly the visible area (dvh follows the mobile
+   browser bars); the safe-area padding sits on body, so subtract it. */
+.test-shell {
+  height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

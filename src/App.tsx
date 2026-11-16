@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage";
@@ -17,8 +17,14 @@ import DuelPage from "./pages/DuelPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import FoydaliMalumotlarPage from "./pages/FoydaliMalumotlarPage";
 import LegalPage from "./pages/LegalPage";
+import MistakesPage from "./pages/MistakesPage";
+import AllQuestionsPage from "./pages/AllQuestionsPage";
+import SavedPage from "./pages/SavedPage";
+import SearchPage from "./pages/SearchPage";
+import ExamCentersPage from "./pages/ExamCentersPage";
+import CheatSheetsPage from "./pages/CheatSheetsPage";
 import { useAuth } from "./hooks/useAuth";
-import { PresenceProvider } from "./hooks/usePresence";
+import { PresenceProvider, useUserEvent } from "./hooks/usePresence";
 import { CornerSwitch } from "./components/CornerSwitch";
 import NotFound from "./pages/NotFound";
 import { safeStorage } from '@/lib/safeStorage';
@@ -115,6 +121,15 @@ function GlobalCornerSwitch() {
   return <CornerSwitch hasSession={hasSession} />;
 }
 
+// A random opponent was found: take the student to the room wherever he is.
+function DuelMatchListener() {
+  const navigate = useNavigate();
+  useUserEvent('duel_matched', (payload) => {
+    if (typeof payload.duel_id === 'string') navigate(`/duel/${payload.duel_id}`);
+  });
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -122,6 +137,7 @@ const App = () => (
       <Sonner />
       <HashRouter>
         <PresenceProvider>
+        <DuelMatchListener />
         <GlobalCornerSwitch />
         <Routes>
           <Route path="/auth" element={<AuthPage />} />
@@ -151,6 +167,13 @@ const App = () => (
               <LeaderboardPage />
             </ProtectedRoute>
           } />
+          <Route path="/mistakes" element={<ProtectedRoute><MistakesPage /></ProtectedRoute>} />
+          <Route path="/all-questions" element={<ProtectedRoute><AllQuestionsPage /></ProtectedRoute>} />
+          <Route path="/saved" element={<ProtectedRoute><SavedPage /></ProtectedRoute>} />
+          <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
+          <Route path="/exam-centers" element={<ProtectedRoute><ExamCentersPage /></ProtectedRoute>} />
+          <Route path="/cheat-sheets" element={<ProtectedRoute><CheatSheetsPage /></ProtectedRoute>} />
+          <Route path="/cheat-sheets/:sheetId" element={<ProtectedRoute><CheatSheetsPage /></ProtectedRoute>} />
           <Route path="/foydali-malumotlar" element={
             <ProtectedRoute>
               <FoydaliMalumotlarPage />

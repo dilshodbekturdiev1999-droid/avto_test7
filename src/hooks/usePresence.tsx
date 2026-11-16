@@ -9,7 +9,7 @@ import { safeStorage } from '@/lib/safeStorage';
 // never sent by the server) -- consumers use it to re-sync once right after
 // a dropped socket comes back, instead of blindly polling the whole time in
 // between.
-const USER_EVENTS = ['duel_invite', 'duel_updated', 'friend_request', 'friend_accepted', 'access_granted'] as const;
+const USER_EVENTS = ['duel_invite', 'duel_updated', 'duel_matched', 'friend_request', 'friend_accepted', 'access_granted'] as const;
 const RECONNECTED_EVENT = '__reconnected' as const;
 type UserEvent = (typeof USER_EVENTS)[number] | typeof RECONNECTED_EVENT;
 type EventListener = (payload: Record<string, unknown>) => void;

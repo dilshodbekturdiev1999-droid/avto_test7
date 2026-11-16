@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      screens: {
+        // A phone held sideways: wide, but very little height.
+        short: { raw: '(orientation: landscape) and (max-height: 520px)' },
+      },
       fontFamily: {
         sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
         mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],

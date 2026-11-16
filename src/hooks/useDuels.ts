@@ -1,4 +1,6 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getTestLang } from '@/lib/testLang';
 import { invokeFunction } from '@/integrations/supabase/functionsClient';
 import { getDeviceId } from '@/lib/deviceId';
 import { safeStorage } from '@/lib/safeStorage';
@@ -32,6 +34,8 @@ export interface DuelSummary {
   opponent_score: number | null;
   winner_id: string | null;
   created_at: string;
+  source?: 'friend' | 'random';
+  start_at?: string | null;
   opponent_user: DuelUser;
 }
 
@@ -54,6 +58,15 @@ export interface DuelDetail {
   opponent_finished: boolean;
   winner_id: string | null;
   total_questions: number | null;
+  // Set by builds of the server that synchronise the start (older rows: null).
+  lang?: 'uz' | 'ru' | null;
+  question_ids?: string[] | null;
+  question_time_sec?: number;
+  start_at?: string | null;
+  server_now?: string;
+  my_answers?: Record<string, string>;
+  source?: 'friend' | 'random';
+  ended_reason?: string | null;
 }
 
 export interface LeaderboardRow {
@@ -124,7 +137,7 @@ export function useLeaderboard() {
 export function useChallengeFriend() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (opponentLogin: string) => callDuels<{ duel_id: string }>('challenge', { opponent_login: opponentLogin }),
+    mutationFn: (opponentLogin: string) => callDuels<{ duel_id: string }>('challenge', { opponent_login: opponentLogin, lang: getTestLang() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['duel-list'] });
     },
@@ -145,11 +158,132 @@ export function useRespondDuel() {
 export function useSubmitDuelResult() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ duelId, correctCount, totalQuestions }: { duelId: string; correctCount: number; totalQuestions: number }) =>
-      callDuels('submit-result', { duel_id: duelId, correct_count: correctCount, total_questions: totalQuestions }),
+    // `answers` ({question_id: answer_id}) is scored by the server. correctCount is only
+    // sent for duels created before the server learned to do that.
+    mutationFn: ({
+      duelId,
+      answers,
+      correctCount,
+      totalQuestions,
+    }: {
+      duelId: string;
+      answers?: Record<string, string>;
+      correctCount?: number;
+      totalQuestions?: number;
+    }) =>
+      callDuels('submit-result', {
+        duel_id: duelId,
+        answers,
+        correct_count: correctCount,
+        total_questions: totalQuestions,
+      }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['duel', variables.duelId] });
       queryClient.invalidateQueries({ queryKey: ['duel-list'] });
     },
   });
+}
+
+export function useLeaveDuel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (duelId: string) => callDuels<{ ok: boolean; result: string }>('leave', { duel_id: duelId }),
+    onSettled: (_data, _err, duelId) => {
+      queryClient.invalidateQueries({ queryKey: ['duel', duelId] });
+      queryClient.invalidateQueries({ queryKey: ['duel-list'] });
+      queryClient.invalidateQueries({ queryKey: ['duel-leaderboard'] });
+    },
+  });
+}
+
+/** Tell the server this player is still in the room, and keep his answers there. */
+export async function sendDuelHeartbeat(duelId: string, answers: Record<string, string>): Promise<void> {
+  try {
+    await callDuels('heartbeat', { duel_id: duelId, answers });
+  } catch {
+    /* a missed beat is harmless: the server only acts after ~45 s of silence */
+  }
+}
+
+export type MatchState = 'idle' | 'searching' | 'nobody' | 'locked' | 'limit' | 'error';
+
+const MATCH_TIMEOUT_MS = 45_000;
+const MATCH_POLL_MS = 3_000;
+
+/**
+ * "Find an opponent": one press puts the student in the queue; the server pairs him
+ * with anyone else searching in the same language. While searching, the poll doubles as
+ * the heartbeat that says he is online, and the realtime 'duel_matched' push (handled
+ * app-wide) usually brings him to the room before the poll does.
+ */
+export function useRandomMatch(onMatched: (duelId: string) => void) {
+  const [state, setState] = useState<MatchState>('idle');
+  const [seconds, setSeconds] = useState(0);
+  const startedAt = useRef(0);
+  const active = useRef(false);
+  const onMatchedRef = useRef(onMatched);
+  onMatchedRef.current = onMatched;
+
+  const stop = useCallback((leaveQueue: boolean) => {
+    const wasActive = active.current;
+    active.current = false;
+    if (leaveQueue && wasActive) void callDuels('queue-leave').catch(() => {});
+  }, []);
+
+  const start = useCallback(async () => {
+    if (active.current) return;
+    active.current = true;
+    startedAt.current = Date.now();
+    setSeconds(0);
+    setState('searching');
+    try {
+      const res = await callDuels<{ matched: boolean; duel_id?: string }>('queue-join', { lang: getTestLang() });
+      if (res.matched && res.duel_id) {
+        stop(false);
+        setState('idle');
+        onMatchedRef.current(res.duel_id);
+      }
+    } catch (e) {
+      stop(false);
+      const code = e instanceof Error ? e.message : '';
+      setState(code === 'trial_locked' ? 'locked' : code === 'rate_limited' ? 'limit' : 'error');
+    }
+  }, [stop]);
+
+  const cancel = useCallback(() => {
+    stop(true);
+    setState('idle');
+  }, [stop]);
+
+  useEffect(() => {
+    if (state !== 'searching') return;
+    const tick = setInterval(() => setSeconds(Math.floor((Date.now() - startedAt.current) / 1000)), 500);
+    const poll = setInterval(async () => {
+      if (!active.current) return;
+      if (Date.now() - startedAt.current > MATCH_TIMEOUT_MS) {
+        stop(true);
+        setState('nobody');
+        return;
+      }
+      try {
+        const res = await callDuels<{ matched: boolean; duel_id?: string }>('queue-poll');
+        if (res.matched && res.duel_id && active.current) {
+          stop(false);
+          setState('idle');
+          onMatchedRef.current(res.duel_id);
+        }
+      } catch {
+        /* a failed poll is retried on the next tick */
+      }
+    }, MATCH_POLL_MS);
+    return () => {
+      clearInterval(tick);
+      clearInterval(poll);
+    };
+  }, [state, stop]);
+
+  // Leaving the screen while searching takes the student out of the queue.
+  useEffect(() => () => stop(true), [stop]);
+
+  return { state, seconds, start, cancel };
 }

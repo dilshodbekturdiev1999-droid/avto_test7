@@ -7,6 +7,7 @@ import { useTrafficSigns } from '@/hooks/useSupabase';
 import type { TrafficSign } from '@/types/database';
 import { useT } from '@/hooks/useT';
 import { getTestLang } from '@/lib/testLang';
+import { SaveButton } from '@/features/study/SaveButton';
 
 // Fixed display order for categories.
 const CATEGORY_ORDER = [
@@ -156,7 +157,10 @@ const FoydaliMalumotlarPage = () => {
           {openSign && (
             <>
               <DialogHeader>
-                <DialogTitle>{openSign.number}</DialogTitle>
+                <div className="flex items-center justify-between gap-2 pr-6">
+                  <DialogTitle>{openSign.number}</DialogTitle>
+                  <SaveButton kind="sign" itemKey={openSign.id} />
+                </div>
               </DialogHeader>
               <div className="w-40 mx-auto">
                 <SignThumb sign={openSign} />

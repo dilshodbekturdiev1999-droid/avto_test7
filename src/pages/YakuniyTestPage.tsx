@@ -2,7 +2,9 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Trophy, RotateCcw, Play, Wrench, CheckCircle2 } from 'lucide-react';
 import { QuestionView } from '@/components/QuestionView';
-import { ProgressBar } from '@/components/ProgressBar';
+import { TestShell } from '@/components/TestShell';
+import { recordAnswer } from '@/features/study/studyState';
+import { SaveButton } from '@/features/study/SaveButton';
 import { QuestionNumbers } from '@/components/QuestionNumbers';
 import { invokeFunction } from '@/integrations/supabase/functionsClient';
 import { getDeviceId } from '@/lib/deviceId';
@@ -125,7 +127,10 @@ const YakuniyTestPage = () => {
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
 
-  const handleNext = useCallback(() => {
+  // overrideAnswers: the auto-advance timer fires before React re-renders, so it
+  // must pass the fresh answers itself, otherwise the last answer is not counted.
+  const handleNext = useCallback((overrideAnswers?: Record<string, string>) => {
+    const currentAnswers = overrideAnswers ?? answers;
     if (currentIndex < totalQuestions - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
@@ -133,7 +138,7 @@ const YakuniyTestPage = () => {
       const wrongIds: string[] = [];
       const noCorrectAnswerIds: string[] = [];
       questions.forEach(q => {
-        const selectedId = answers[q.id];
+        const selectedId = currentAnswers[q.id];
         const correctAnswer = q.answers.find(a => isAnswerCorrect(a.is_correct));
         if (!correctAnswer) noCorrectAnswerIds.push(q.id);
         if (selectedId && correctAnswer && selectedId === correctAnswer.id) {
@@ -155,10 +160,13 @@ const YakuniyTestPage = () => {
   const handleSelectAnswer = useCallback((answerId: string) => {
     if (!currentQuestion) return;
     if (answers[currentQuestion.id]) return;
-    setAnswers(prev => ({ ...prev, [currentQuestion.id]: answerId }));
+    const newAnswers = { ...answers, [currentQuestion.id]: answerId };
+    setAnswers(newAnswers);
+    const picked = currentQuestion.answers.find((a) => a.id === answerId);
+    recordAnswer(currentQuestion.id, !!picked && isAnswerCorrect(picked.is_correct));
     if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
     autoNextTimerRef.current = setTimeout(() => {
-      handleNext();
+      handleNext(newAnswers);
     }, 1500);
   }, [currentQuestion, answers, handleNext]);
 
@@ -205,6 +213,7 @@ const YakuniyTestPage = () => {
     const correctAnswer = mistakeQuestion.answers.find(
       a => isAnswerCorrect(a.is_correct)
     );
+    recordAnswer(mistakeQuestion.id, !!correctAnswer && answerId === correctAnswer.id);
     if (correctAnswer && answerId === correctAnswer.id) {
       setTimeout(() => {
         setMistakeQueue(prev => {
@@ -308,45 +317,36 @@ const YakuniyTestPage = () => {
     const isWrong = mistakeAnswer !== null && mistakeAnswer !== correctAnswer?.id;
 
     return (
-      <div className="min-h-screen py-8 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/')}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              {t('Орқага', 'Назад')}
+      <TestShell
+        header={
+          <>
+            <Button variant="ghost" size="icon" onClick={() => navigate('/')} aria-label={t('Орқага', 'Назад')}>
+              <ArrowLeft className="w-5 h-5" />
             </Button>
-            <span className="text-muted-foreground font-medium">
+            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
               {t('Xatolar ustida ishlash', 'Работа над ошибками')}
             </span>
-          </div>
-
-          <div className="flex items-center gap-4 mb-8">
-            <ProgressBar current={fixed} total={mistakeInitialCount} className="flex-1" />
-            <span className="text-sm text-muted-foreground shrink-0">
+            <span className="shrink-0 text-sm text-muted-foreground">
               {t('Қолди', 'Осталось')}: {remaining}/{mistakeInitialCount}
             </span>
-          </div>
-
-          <QuestionView
-            question={mistakeQuestion}
-            selectedAnswer={mistakeAnswer}
-            onSelectAnswer={handleMistakeSelectAnswer}
-          />
-
-          {isWrong && (
-            <div className="flex justify-center mt-8">
-              <Button onClick={handleMistakeRetry} variant="outline">
-                <RotateCcw className="w-4 h-4 mr-2" />
-                {t('Яна уриниб кўриш', 'Попробовать снова')}
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
+          </>
+        }
+        progress={{ current: fixed, total: mistakeInitialCount }}
+        footer={
+          isWrong ? (
+            <Button onClick={handleMistakeRetry} variant="outline" className="flex-1">
+              <RotateCcw className="w-4 h-4 mr-2" />
+              {t('Яна уриниб кўриш', 'Попробовать снова')}
+            </Button>
+          ) : undefined
+        }
+      >
+        <QuestionView
+          question={mistakeQuestion}
+          selectedAnswer={mistakeAnswer}
+          onSelectAnswer={handleMistakeSelectAnswer}
+        />
+      </TestShell>
     );
   }
 
@@ -426,30 +426,22 @@ const YakuniyTestPage = () => {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            {t('Орқага', 'Назад')}
+    <TestShell
+      header={
+        <>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')} aria-label={t('Орқага', 'Назад')}>
+            <ArrowLeft className="w-5 h-5" />
           </Button>
-
-          <span className="text-muted-foreground">
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {t('Yakuniy Test', 'Финальный тест')}
           </span>
-        </div>
-
-        <div className="flex items-center gap-4 mb-4">
-          <ProgressBar current={currentIndex + 1} total={totalQuestions} className="flex-1" />
-          <span className="text-sm text-muted-foreground shrink-0">
+          <span className="shrink-0 text-sm text-muted-foreground">
             {currentIndex + 1}/{totalQuestions}
           </span>
-        </div>
-
+        </>
+      }
+      progress={{ current: currentIndex + 1, total: totalQuestions }}
+      numbers={
         <QuestionNumbers
           questions={questions}
           currentIndex={currentIndex}
@@ -462,33 +454,32 @@ const YakuniyTestPage = () => {
             setCurrentIndex(i);
           }}
         />
-
-        <QuestionView
-          question={currentQuestion}
-          selectedAnswer={answers[currentQuestion.id] ?? null}
-          onSelectAnswer={handleSelectAnswer}
-        />
-
-        <div className="flex justify-between mt-8">
-          <Button
-            variant="outline"
-            onClick={handlePrevious}
-            disabled={currentIndex === 0}
-          >
+      }
+      footer={
+        <>
+          <Button variant="outline" onClick={handlePrevious} disabled={currentIndex === 0} className="flex-1">
             <ArrowLeft className="w-4 h-4 mr-2" />
             {t('Олдинги', 'Назад')}
           </Button>
           <Button
             variant="outline"
-            onClick={handleNext}
+            onClick={() => handleNext()}
             disabled={currentIndex >= totalQuestions - 1}
+            className="flex-1"
           >
             {t('Кейингиси', 'Далее')}
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <QuestionView
+        question={currentQuestion}
+        selectedAnswer={answers[currentQuestion.id] ?? null}
+        onSelectAnswer={handleSelectAnswer}
+        headerAction={<SaveButton kind="question" itemKey={currentQuestion.id} className="-mr-2 -mt-1" />}
+      />
+    </TestShell>
   );
 };
 
