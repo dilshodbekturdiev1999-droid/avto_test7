@@ -1,5 +1,4 @@
-/* IBM Plex — same technical/premium family as lucien.com; full Cyrillic. */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+/* Fonts are linked in index.html (Geologica for the UI, IBM Plex Sans for the 3D celebrations). */
 
 @tailwind base;
 @tailwind components;

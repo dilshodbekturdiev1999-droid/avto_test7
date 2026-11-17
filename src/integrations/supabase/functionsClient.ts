@@ -9,6 +9,8 @@ const FUNCTIONS_SUPABASE_URL = 'https://vywzulllyxlhynxgmpqc.supabase.co';
 const FUNCTIONS_SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5d3p1bGxseXhsaHlueGdtcHFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzODc1OTAsImV4cCI6MjEwNzk2MzU5MH0._IC5BYsM2qhmDQIfa4d2yj-tyG5cbT_aGzQzFphNdSk';
 
+const FUNCTIONS_REGION = 'ap-northeast-1';
+
 export const functionsSupabase = createClient(FUNCTIONS_SUPABASE_URL, FUNCTIONS_SUPABASE_ANON_KEY);
 
 // supabase-js treats any non-2xx response from an edge function as an
@@ -19,7 +21,13 @@ export async function invokeFunction<T = any>(
   name: string,
   body: Record<string, unknown>
 ): Promise<{ data: T | null; error: string | null }> {
-  const { data, error } = await functionsSupabase.functions.invoke(name, { body });
+  // The database lives in Tokyo (ap-northeast-1) but Supabase runs a function
+  // in the region nearest the caller (Frankfurt for Uzbekistan), so every DB
+  // query inside it crossed Europe-Asia: get-data took ~1.25 s. Running the
+  // function next to the database brings it to ~0.7 s. Query param, not the
+  // `region` option: that one also sends an x-region header our CORS list
+  // does not allow.
+  const { data, error } = await functionsSupabase.functions.invoke(`${name}?forceFunctionRegion=${FUNCTIONS_REGION}`, { body });
 
   if (error) {
     let code: string | null = null;

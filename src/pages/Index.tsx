@@ -2,7 +2,7 @@ import type { ComponentType } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { useLessons, useTopics, useAllTopics } from '@/hooks/useSupabase';
+import { useLessons, useAllTopics } from '@/hooks/useSupabase';
 import { LessonCard } from '@/components/LessonCard';
 import { ProgressRing } from '@/components/ProgressRing';
 import { Logo } from '@/components/landing/Logo';
@@ -261,7 +261,8 @@ function LessonCardWithProgress({
   allLessons: Lesson[];
   onClick: () => void;
 }) {
-  const { data: topics } = useTopics(lessonId);
+  // One all-topics list instead of a server call per lesson card.
+  const topicCount = allTopics.filter((tp) => tp.lesson_id === lessonId).length;
   // Trial gate: only lesson 1 (index 0) is open to everyone, and only while
   // the 7-day trial window hasn't run out; everything else, including the
   // Yakuniy (final test) lesson, needs full (paid) access.
@@ -271,7 +272,7 @@ function LessonCardWithProgress({
   return (
     <LessonCard
       title={title}
-      topicCount={topics?.length ?? 0}
+      topicCount={topicCount}
       completedCount={lessonProgress.completed}
       index={index}
       isUnlocked={isUnlocked}

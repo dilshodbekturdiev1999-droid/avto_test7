@@ -2,7 +2,6 @@
    Prava On design "Sokin": tinted neutrals, soft surfaces, deep blue.
    Applied through <html data-design="c"> (set in index.html before paint).
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600&display=swap');
 
 /* ---------- C · Sokin ---------- */
 html[data-design='c'] {

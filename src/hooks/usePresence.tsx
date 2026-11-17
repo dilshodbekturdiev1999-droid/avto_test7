@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { functionsSupabase } from '@/integrations/supabase/functionsClient';
 import { safeStorage } from '@/lib/safeStorage';
 
@@ -108,15 +108,22 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
     };
   }, [userId]);
 
-  const on = (event: UserEvent, cb: EventListener) => {
+  // Stable across renders: a presence 'sync' (any student anywhere going
+  // online/offline) re-renders this provider, and a fresh { on } object used
+  // to re-render every useUserEvent consumer (useAuth, useDuels, useFriends,
+  // App) and re-subscribe all their listeners each time.
+  const on = useCallback((event: UserEvent, cb: EventListener) => {
     if (!listenersRef.current.has(event)) listenersRef.current.set(event, new Set());
     listenersRef.current.get(event)!.add(cb);
-    return () => listenersRef.current.get(event)?.delete(cb);
-  };
+    return () => {
+      listenersRef.current.get(event)?.delete(cb);
+    };
+  }, []);
+  const events = useMemo(() => ({ on }), [on]);
 
   return (
     <PresenceContext.Provider value={onlineIds}>
-      <UserEventsContext.Provider value={{ on }}>{children}</UserEventsContext.Provider>
+      <UserEventsContext.Provider value={events}>{children}</UserEventsContext.Provider>
     </PresenceContext.Provider>
   );
 }
