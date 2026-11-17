@@ -3,6 +3,8 @@
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { gameFile, gameFileList, gameFileOptional, preloadGame, preloadProgress } from './preload';
 
 export interface TreeSpot {
   k: 'leafy' | 'pine' | 'bush';
@@ -48,46 +50,45 @@ export async function loadGameAssets(
   carHasLow = true,
 ): Promise<GameAssets> {
   const loader = new GLTFLoader();
-  const parts = { autodrome: 0, trees: 0, car: 0 };
-  const report = () => onProgress(parts.autodrome * 0.45 + parts.car * 0.4 + parts.trees * 0.15);
-  const load = (file: string, key: 'autodrome' | 'car') =>
-    new Promise<GLTF>((resolve, reject) =>
-      loader.load(
-        BASE + file,
-        (g) => {
-          parts[key] = 1;
-          report();
-          resolve(g);
-        },
-        (e) => {
-          if (e.total) {
-            parts[key] = e.loaded / e.total;
-            report();
-          }
-        },
-        reject,
-      ),
-    );
+  loader.setMeshoptDecoder(MeshoptDecoder);
+  const names = gameFileList(carFile, carHasLow && lowCar);
+  void preloadGame(carFile, carHasLow);
+  let done = false;
+  const tick = () => {
+    if (done) return;
+    onProgress(Math.min(0.97, preloadProgress(names)));
+    setTimeout(tick, 120);
+  };
+  tick();
+  const carName = lowCar && carHasLow ? `${carFile}_low.glb` : `${carFile}.glb`;
+  const json = async <T,>(name: string) => JSON.parse(new TextDecoder().decode(await gameFile(name))) as T;
+  const blobUrl = async (name: string, type: string) => URL.createObjectURL(new Blob([await gameFile(name)], { type }));
+  const texture = async (name: string, type: string) => {
+    const url = await blobUrl(name, type);
+    try {
+      return await new THREE.TextureLoader().loadAsync(url);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
+  const gltf = async (name: string) => loader.parseAsync(await gameFile(name), BASE);
   const loadTrees = async () => {
-    const sprites = (await fetch(BASE + 'trees/trees.json').then((r) => r.json())) as GameAssets['treeSprites'];
-    const tl = new THREE.TextureLoader();
-    const names = Object.keys(sprites);
+    const sprites = await json<GameAssets['treeSprites']>('trees/trees.json');
     const textures: Record<string, THREE.Texture> = {};
     await Promise.all(
-      names.map(async (n) => {
-        textures[n] = await tl.loadAsync(`${BASE}trees/${n}.png`);
+      Object.keys(sprites).map(async (n) => {
+        textures[n] = await texture(`trees/${n}.webp`, 'image/webp');
       }),
     );
-    parts.trees = 1;
-    report();
     return { sprites, textures };
   };
   const loadEnv = async () => {
+    const hdrUrl = await blobUrl('env/sky_1k.hdr', 'application/octet-stream');
     const [env, bg, info, skid] = await Promise.all([
-      new RGBELoader().loadAsync(BASE + 'env/sky_1k.hdr'),
-      new THREE.TextureLoader().loadAsync(BASE + 'env/sky_bg.jpg'),
-      fetch(BASE + 'env/sky.json').then((r) => r.json() as Promise<{ sun: [number, number, number] }>),
-      new THREE.TextureLoader().loadAsync(BASE + 'textures/skid.png'),
+      new RGBELoader().loadAsync(hdrUrl).finally(() => URL.revokeObjectURL(hdrUrl)),
+      texture('env/sky_bg.jpg', 'image/jpeg'),
+      json<{ sun: [number, number, number] }>('env/sky.json'),
+      texture('textures/skid.png', 'image/png'),
     ]);
     env.mapping = THREE.EquirectangularReflectionMapping;
     bg.mapping = THREE.EquirectangularReflectionMapping;
@@ -95,16 +96,22 @@ export async function loadGameAssets(
     skid.wrapS = THREE.RepeatWrapping;
     return { env, bg, sun: new THREE.Vector3(...info.sun), skid };
   };
-  const [autodrome, trees, car, meta, env, carRig] = await Promise.all([
-    load('autodrome.glb', 'autodrome'),
+  const [autodrome, trees, car, meta, env, carRigBuf] = await Promise.all([
+    gltf('autodrome.glb'),
     loadTrees(),
-    lowCar && carHasLow ? load(`${carFile}_low.glb`, 'car').catch(() => load(`${carFile}.glb`, 'car')) : load(`${carFile}.glb`, 'car'),
-    fetch(BASE + 'autodrome.json').then((r) => r.json() as Promise<AutodromeMeta>),
+    gltf(carName).catch(() => gltf(`${carFile}.glb`)),
+    json<AutodromeMeta>('autodrome.json'),
     loadEnv(),
-    fetch(`${BASE}${carFile}.json`)
-      .then((r) => (r.ok ? r.json() : null))
-      .catch(() => null) as Promise<import('./vehicles').CarRigJson | null>,
+    gameFileOptional(`${carFile}.json`),
   ]);
+  done = true;
+  onProgress(1);
+  let carRig: import('./vehicles').CarRigJson | null = null;
+  try {
+    carRig = carRigBuf ? JSON.parse(new TextDecoder().decode(carRigBuf)) : null;
+  } catch {
+    carRig = null;
+  }
   return {
     autodrome,
     car,

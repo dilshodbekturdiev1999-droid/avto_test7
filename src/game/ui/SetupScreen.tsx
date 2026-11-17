@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Check } from 'lucide-react';
 import { useT } from '@/hooks/useT';
 import { VEHICLES, type Category } from '../engine/vehicles';
+import { preloadGame } from '../engine/preload';
 
 export type GameMode = 'exam' | 'free';
 
@@ -32,6 +33,10 @@ export default function SetupScreen({ initial, onStart, onBack }: { initial: Gam
   const [mode, setMode] = useState<GameMode>(initial?.mode ?? 'exam');
   const cars = VEHICLES.filter((v) => v.category === category);
   const car = cars.find((v) => v.id === vehicleId) ?? cars[0];
+  // download the game files while the player is still choosing
+  useEffect(() => {
+    if (car) void preloadGame(car.file, car.hasLow);
+  }, [car]);
 
   const pickCategory = (c: Category) => {
     setCategory(c);

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { GameAssets } from './assets';
 import { buildTrees } from './trees';
 import { COBALT, type VehicleProfile } from './vehicles';
+import { gameFile } from './preload';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -188,12 +189,16 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
   const asphaltGrain = grainTexture('asphalt');
   const grassGrain = grainTexture('grass');
   const photoDetail = (file: string, fallback: THREE.Texture) =>
-    new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}game/textures/${file}`, (t) => {
-      t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      t.colorSpace = THREE.NoColorSpace;
-      t.anisotropy = Math.min(maxAniso, 8);
-      fallback.image = t.image;
-      fallback.needsUpdate = true;
+    void gameFile(`textures/${file}`).then((buf) => {
+      const url = URL.createObjectURL(new Blob([buf], { type: 'image/jpeg' }));
+      new THREE.TextureLoader().load(url, (t) => {
+        URL.revokeObjectURL(url);
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.colorSpace = THREE.NoColorSpace;
+        t.anisotropy = Math.min(maxAniso, 8);
+        fallback.image = t.image;
+        fallback.needsUpdate = true;
+      });
     });
   photoDetail('detail_asphalt.jpg', asphaltGrain);
   photoDetail('detail_grass.jpg', grassGrain);

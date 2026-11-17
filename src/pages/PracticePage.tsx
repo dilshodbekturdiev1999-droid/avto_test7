@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SiteShell } from '@/components/site/SiteShell';
 import { SIcon } from '@/components/ui/SIcon';
@@ -15,6 +16,14 @@ const PracticePage = () => {
   const mistakes = getMistakeIds().length;
   const { data: duelData } = useDuelList();
   const invites = duelData?.incoming?.length ?? 0;
+  // Avtodrom opens at once: fetch its code and 3D files in the background while this page is open.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void import('@/game/AvtodromPage');
+      void import('@/game/engine/preload').then((m) => m.preloadGame());
+    }, 1200);
+    return () => window.clearTimeout(id);
+  }, []);
 
   return (
     <SiteShell tab="practice" title={t('Машқ', 'Практика')}>

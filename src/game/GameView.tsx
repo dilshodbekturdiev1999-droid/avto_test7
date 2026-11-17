@@ -12,6 +12,7 @@ import { buildScene, type MirrorRect, type Quality } from './engine/scene';
 import { createSkids } from './engine/skids';
 import { EngineSound } from './engine/sound';
 import { VEHICLES, withRig } from './engine/vehicles';
+import { gameFile } from './engine/preload';
 import ResultScreen from './ui/ResultScreen';
 import { COLORS, type GameSetup } from './ui/SetupScreen';
 
@@ -322,7 +323,9 @@ export default function GameView({
         let lastCam: CamMode = camRef.current;
 
         const miniImg = new Image();
-        miniImg.src = `${import.meta.env.BASE_URL}game/minimap.jpg`;
+        void gameFile('minimap.jpg').then((buf) => {
+          miniImg.src = URL.createObjectURL(new Blob([buf], { type: 'image/jpeg' }));
+        });
         const W = assets.meta.width;
         const D = assets.meta.depth;
 
