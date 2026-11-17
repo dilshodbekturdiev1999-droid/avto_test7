@@ -14,6 +14,8 @@ import { useTestLang } from '@/hooks/useTestLang';
 import { useT } from '@/hooks/useT';
 import { LogOut, User, Trophy, BookOpen, ClipboardX, Layers, Bookmark, Search, MapPin, NotebookText } from 'lucide-react';
 import { getMistakeIds, getSavedCount, useStudyVersion } from '@/features/study/studyState';
+import { celebrateAllLessonsOnce, celebrateExamDayIfDue } from '@/features/celebrate/celebrate';
+import { useEffect } from 'react';
 import { UserCountBadge } from '@/components/UserCountBadge';
 import { AccessExpiryBadge } from '@/components/AccessExpiryBadge';
 import { cn } from '@/lib/utils';
@@ -36,6 +38,10 @@ const Index = () => {
   const totalTopics = allTopics?.length ?? 0;
   const completedTopics = allTopics?.filter((tp) => getTopicProgress(tp.id)?.completed).length ?? 0;
   const overallPct = totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0;
+  useEffect(() => {
+    if (totalTopics > 0 && overallPct >= 100) celebrateAllLessonsOnce();
+    else celebrateExamDayIfDue();
+  }, [overallPct, totalTopics]);
 
   // Trial users (not in allowed_phones) only get lesson 1 + the Yakuniy test;
   // paid/full users get everything. Missing flag = full (existing sessions).

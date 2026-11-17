@@ -25,6 +25,7 @@ import ExamCentersPage from "./pages/ExamCentersPage";
 import CheatSheetsPage from "./pages/CheatSheetsPage";
 import { useAuth } from "./hooks/useAuth";
 import { PresenceProvider, useUserEvent } from "./hooks/usePresence";
+import { CelebrationHost } from "./features/celebrate/CelebrationHost";
 import { CornerSwitch } from "./components/CornerSwitch";
 import NotFound from "./pages/NotFound";
 import { safeStorage } from '@/lib/safeStorage';
@@ -138,6 +139,7 @@ const App = () => (
       <HashRouter>
         <PresenceProvider>
         <DuelMatchListener />
+        <CelebrationHost />
         <GlobalCornerSwitch />
         <Routes>
           <Route path="/auth" element={<AuthPage />} />

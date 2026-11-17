@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Trophy, RotateCcw, Play, Wrench, CheckCircle2 } 
 import { QuestionView } from '@/components/QuestionView';
 import { TestShell } from '@/components/TestShell';
 import { recordAnswer } from '@/features/study/studyState';
+import { celebrate } from '@/features/celebrate/celebrate';
 import { SaveButton } from '@/features/study/SaveButton';
 import { QuestionNumbers } from '@/components/QuestionNumbers';
 import { invokeFunction } from '@/integrations/supabase/functionsClient';
@@ -154,6 +155,7 @@ const YakuniyTestPage = () => {
       setScore(percentage);
       setWrongQuestionIds(wrongIds);
       setIsFinished(true);
+      celebrate(totalQuestions >= 200 ? 'q200' : percentage >= 95 ? 'final' : 'failed', percentage);
     }
   }, [currentIndex, totalQuestions, questions, answers]);
 

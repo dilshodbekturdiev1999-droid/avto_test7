@@ -7,6 +7,7 @@ import { QuestionNumbers } from '@/components/QuestionNumbers';
 import { TestShell } from '@/components/TestShell';
 import { setTopicProgress, setActiveTopic, getTopicProgress } from '@/lib/progress';
 import { recordAnswer } from '@/features/study/studyState';
+import { celebrate } from '@/features/celebrate/celebrate';
 import { SaveButton } from '@/features/study/SaveButton';
 import { Button } from '@/components/ui/button';
 import { cn, isAnswerCorrect } from '@/lib/utils';
@@ -109,6 +110,7 @@ const TestPage = () => {
       setTopicProgress(topicId!, percentage, correct, wrongIds.length, timeTaken, totalQuestions);
       setIsNewRecord(percentage >= 95 && (previousBest === null || timeTaken < previousBest));
       setIsFinished(true);
+      celebrate(percentage >= 95 ? 'passed' : 'failed', percentage);
     }
   }, [currentIndex, totalQuestions, questions, answers, topicId]);
 

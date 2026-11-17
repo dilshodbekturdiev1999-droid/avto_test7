@@ -15,6 +15,7 @@ import { safeStorage } from '@/lib/safeStorage';
 import type { TestLang } from '@/lib/testLang';
 import { recordAnswer } from '@/features/study/studyState';
 import { SaveButton } from '@/features/study/SaveButton';
+import { celebrate } from '@/features/celebrate/celebrate';
 
 /**
  * "1200+ savollar": every question of the bank in one run, either shuffled or in
@@ -145,11 +146,21 @@ const AllQuestionsPage = () => {
     update({ index });
   };
 
-  const finish = () => {
+  const finish = (finalAnswers?: Record<string, string>) => {
     clearTimer();
     saveSession(null);
     setResumable(null);
     setFinished(true);
+    // the whole bank answered: the big one
+    const answers = finalAnswers ?? session?.answers ?? {};
+    const answered = Object.keys(answers).length;
+    if (questions.length > 0 && answered >= questions.length) {
+      const right = questions.filter((q) => {
+        const picked = q.answers.find((a) => a.id === answers[q.id]);
+        return picked && isAnswerCorrect(picked.is_correct);
+      }).length;
+      celebrate('q1200', Math.round((right / answered) * 100));
+    }
   };
 
   if (entries === null) {
@@ -278,7 +289,7 @@ const AllQuestionsPage = () => {
     clearTimer();
     timer.current = setTimeout(() => {
       if (session.index < total - 1) update({ index: session.index + 1 });
-      else finish();
+      else finish(answers);
     }, 1500);
   };
 
@@ -295,7 +306,7 @@ const AllQuestionsPage = () => {
           <span className="shrink-0 text-sm text-muted-foreground">
             {session.index + 1}/{total}
           </span>
-          <Button variant="outline" size="sm" onClick={finish} className={cn('shrink-0')}>
+          <Button variant="outline" size="sm" onClick={() => finish()} className={cn('shrink-0')}>
             {t('Тугатиш', 'Завершить')}
           </Button>
         </>

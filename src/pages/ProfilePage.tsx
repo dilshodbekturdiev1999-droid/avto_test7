@@ -16,6 +16,7 @@ import { safeStorage } from '@/lib/safeStorage';
 import { AccessExpiryBadge } from '@/components/AccessExpiryBadge';
 import { useT } from '@/hooks/useT';
 import { DeleteAccountDialog } from '@/components/DeleteAccountDialog';
+import { ExamDateCard } from '@/features/celebrate/ExamDateCard';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -239,6 +240,7 @@ const ProfilePage = () => {
         </>
       )}
       </div>
+      <div className="mt-6"><ExamDateCard /></div>
       <div className="mt-8 text-center">
         <button type="button" onClick={() => setDeleteOpen(true)} className="text-sm text-muted-foreground underline hover:text-destructive">
           {t('Ҳисобни ўчириш', 'Удалить аккаунт')}
