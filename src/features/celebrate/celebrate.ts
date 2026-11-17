@@ -11,10 +11,13 @@ export interface CelebrationRequest {
 
 const EVENT = 'pravaon:celebrate';
 
+/** Owner turned the 3D celebrations off for now (2026-11-17). The scenes stay in the repo. */
+export const CELEBRATIONS_ENABLED = false;
+
 /** Ask the app to play a celebration over the current screen. */
 export function celebrate(kind: CelebrationKind, value = 0): void {
   // People who asked the system for less motion get the result screen without it.
-  if (typeof window === 'undefined') return;
+  if (!CELEBRATIONS_ENABLED || typeof window === 'undefined') return;
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
   window.dispatchEvent(new CustomEvent<CelebrationRequest>(EVENT, { detail: { kind, value: Math.round(value) } }));
 }

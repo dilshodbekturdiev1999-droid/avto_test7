@@ -18,8 +18,8 @@ export default {
         short: { raw: '(orientation: landscape) and (max-height: 520px)' },
       },
       fontFamily: {
-        sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
-        mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        sans: ['Geologica Variable', 'system-ui', 'sans-serif'],
+        mono: ['Geologica Variable', 'ui-monospace', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",

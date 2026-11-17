@@ -26,8 +26,8 @@ html[data-design='c'] {
   --input: 216 26% 85%;
   --ring: 228 69% 47%;
   --radius: 0.875rem;
-  --d-font: 'Geologica', system-ui, sans-serif;
-  --d-num: 'Geologica', system-ui, sans-serif;
+  --d-font: 'Geologica Variable', 'Geologica', system-ui, sans-serif;
+  --d-num: 'Geologica Variable', 'Geologica', system-ui, sans-serif;
   --d-shadow: 0 1px 2px hsl(222 40% 20% / 0.05), 0 8px 24px -12px hsl(222 40% 20% / 0.12);
   --d-band: 0 0% 100%;
   --d-band-fg: 222 30% 15%;
@@ -211,3 +211,12 @@ html[data-design] .qv-answer[data-state='correct'] { background: hsl(var(--succe
 html[data-design] .qv-answer[data-state='wrong'] { background: hsl(var(--destructive) / 0.1); border-color: hsl(var(--destructive)); }
 html[data-design] .qv-answer[data-state='correct'] .qv-key { background: hsl(var(--success)); color: #fff; }
 html[data-design] .qv-answer[data-state='wrong'] .qv-key { background: hsl(var(--destructive)); color: #fff; }
+
+
+/* Speed: the landing hero no longer animates blur filters or loops forever. */
+html[data-design] .split-word { filter: none !important; animation: none !important; opacity: 1 !important; transform: none !important; }
+html[data-design] .bg-breathe,
+html[data-design] .levitate,
+html[data-design] .animate-float,
+html[data-design] .animate-float-slow,
+html[data-design] .animate-float-rev { animation: none !important; }

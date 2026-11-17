@@ -3,32 +3,34 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import AuthPage from "./pages/AuthPage";
-import LandingPage from "./pages/LandingPage";
-import Index from "./pages/Index";
-import LessonPage from "./pages/LessonPage";
-import TopicVideoPage from "./pages/TopicVideoPage";
-import TestPage from "./pages/TestPage";
-import YakuniyTestPage from "./pages/YakuniyTestPage";
-import ProfilePage from "./pages/ProfilePage";
-import CheckoutPage from "./pages/CheckoutPage";
-import DuelPage from "./pages/DuelPage";
-import LeaderboardPage from "./pages/LeaderboardPage";
-import FoydaliMalumotlarPage from "./pages/FoydaliMalumotlarPage";
-import LegalPage from "./pages/LegalPage";
-import MistakesPage from "./pages/MistakesPage";
-import AllQuestionsPage from "./pages/AllQuestionsPage";
-import SavedPage from "./pages/SavedPage";
-import SearchPage from "./pages/SearchPage";
-import ExamCentersPage from "./pages/ExamCentersPage";
-import CheatSheetsPage from "./pages/CheatSheetsPage";
+import { useState, useEffect, lazy, Suspense } from "react";
+const AuthPage = lazy(() => import("./pages/AuthPage"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const Index = lazy(() => import("./pages/Index"));
+const LessonPage = lazy(() => import("./pages/LessonPage"));
+const TopicVideoPage = lazy(() => import("./pages/TopicVideoPage"));
+const TestPage = lazy(() => import("./pages/TestPage"));
+const YakuniyTestPage = lazy(() => import("./pages/YakuniyTestPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
+const DuelPage = lazy(() => import("./pages/DuelPage"));
+const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const FoydaliMalumotlarPage = lazy(() => import("./pages/FoydaliMalumotlarPage"));
+const LegalPage = lazy(() => import("./pages/LegalPage"));
+const MistakesPage = lazy(() => import("./pages/MistakesPage"));
+const AllQuestionsPage = lazy(() => import("./pages/AllQuestionsPage"));
+const SavedPage = lazy(() => import("./pages/SavedPage"));
+const SearchPage = lazy(() => import("./pages/SearchPage"));
+const ExamCentersPage = lazy(() => import("./pages/ExamCentersPage"));
+const CheatSheetsPage = lazy(() => import("./pages/CheatSheetsPage"));
 import { useAuth } from "./hooks/useAuth";
 import { PresenceProvider, useUserEvent } from "./hooks/usePresence";
-import { CelebrationHost } from "./features/celebrate/CelebrationHost";
 import { CornerSwitch } from "./components/CornerSwitch";
 import NotFound from "./pages/NotFound";
 import { safeStorage } from '@/lib/safeStorage';
+
+// Shown for a moment while a page chunk loads.
+const PageFallback = () => <div className="min-h-[60vh]" />;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -139,8 +141,8 @@ const App = () => (
       <HashRouter>
         <PresenceProvider>
         <DuelMatchListener />
-        <CelebrationHost />
         <GlobalCornerSwitch />
+        <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/auth" element={<AuthPage />} />
           {/* Registration is mandatory — old public preview routes now lead to sign-up. */}
@@ -203,6 +205,7 @@ const App = () => (
           } />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
         </PresenceProvider>
       </HashRouter>
     </TooltipProvider>

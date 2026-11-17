@@ -111,7 +111,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Geologica Variable', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -133,17 +133,17 @@
 @layer utilities {
   /* ---- Display typography ---- */
   .font-display {
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Geologica Variable', system-ui, sans-serif;
     font-weight: 700;
     letter-spacing: -0.03em;
   }
   /* Monospace accent — the signature "technical premium" detail (à la lucien.com):
      eyebrows, labels, stats, numbers. */
   .font-mono, .mono {
-    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-family: 'Geologica Variable', ui-monospace, monospace;
   }
   .label-mono {
-    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-family: 'Geologica Variable', ui-monospace, monospace;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     font-weight: 500;
