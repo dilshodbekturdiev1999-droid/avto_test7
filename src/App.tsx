@@ -8,6 +8,9 @@ const AuthPage = lazy(() => import("./pages/AuthPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const Index = lazy(() => import("./pages/Index"));
 const LessonPage = lazy(() => import("./pages/LessonPage"));
+const LessonsPage = lazy(() => import("./pages/LessonsPage"));
+const PracticePage = lazy(() => import("./pages/PracticePage"));
+const InfoPage = lazy(() => import("./pages/InfoPage"));
 const TopicVideoPage = lazy(() => import("./pages/TopicVideoPage"));
 const TestPage = lazy(() => import("./pages/TestPage"));
 const YakuniyTestPage = lazy(() => import("./pages/YakuniyTestPage"));
@@ -119,9 +122,9 @@ function GlobalCornerSwitch() {
   // theme toggle in the nav bar (next to language/login) -- this floating
   // corner button there was a confusing duplicate. Logged-in users have no
   // other theme toggle anywhere in the app, so it stays for them.
-  if (!hasSession) return null;
-
-  return <CornerSwitch hasSession={hasSession} />;
+  // Logged-in students switch the theme in Profile; the corner button sat over the tab bar.
+  void hasSession;
+  return null;
 }
 
 // A random opponent was found: take the student to the room wherever he is.
@@ -171,6 +174,9 @@ const App = () => (
               <LeaderboardPage />
             </ProtectedRoute>
           } />
+          <Route path="/lessons" element={<ProtectedRoute><LessonsPage /></ProtectedRoute>} />
+          <Route path="/practice" element={<ProtectedRoute><PracticePage /></ProtectedRoute>} />
+          <Route path="/info" element={<ProtectedRoute><InfoPage /></ProtectedRoute>} />
           <Route path="/mistakes" element={<ProtectedRoute><MistakesPage /></ProtectedRoute>} />
           <Route path="/all-questions" element={<ProtectedRoute><AllQuestionsPage /></ProtectedRoute>} />
           <Route path="/saved" element={<ProtectedRoute><SavedPage /></ProtectedRoute>} />

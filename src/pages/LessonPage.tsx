@@ -3,6 +3,8 @@ import { ArrowLeft } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLesson, useTopics, useQuestions, useLessons, useAllTopics } from '@/hooks/useSupabase';
 import { TopicCard } from '@/components/TopicCard';
+import { PageShell } from '@/components/PageShell';
+import { LessonTopics } from '@/components/site/LessonTopics';
 import { isTopicUnlocked, useProgressVersion } from '@/lib/progress';
 import { Button } from '@/components/ui/button';
 import { Topic, Lesson } from '@/types/database';
@@ -49,64 +51,12 @@ const LessonPage = () => {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="max-w-5xl mx-auto">
-        {/* Back button */}
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/')}
-          className="mb-8 text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          {t('Орқага', 'Назад')}
-        </Button>
-
-        {/* Header */}
-        <div className="text-center mb-12 animate-fade-in">
-          <h1 className="text-3xl font-bold text-foreground mb-4">
-            {lesson?.title ?? t('Дарс', 'Урок')}
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            {t('Тестни бошлаш учун мавзуни танланг', 'Выберите тему, чтобы начать тест')}
-          </p>
-        </div>
-
-        {/* Topics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {topics?.map((topic, index) => {
-            const handleTopicClick = () => {
-              if (topic.id === '1149fe59-ffd0-41f3-ab77-825451215100') {
-                navigate(`/test/yakuniy/${topic.id}`);
-              } else if (hasVideoAccess) {
-                navigate(`/topic/${topic.id}/video`);
-              } else {
-                // Standard/Pro tariffs: tests only, no video lessons -- skip
-                // straight to the test instead of the video+"start test" page.
-                navigate(`/test/${topic.id}`);
-              }
-            };
-            
-            return (
-              <TopicCardWithQuestionCount
-                key={topic.id}
-                topicId={topic.id}
-                title={topic.title_uz_cyr}
-                index={index}
-                allTopics={allTopics || []}
-                allLessons={allLessons || []}
-                onClick={handleTopicClick}
-              />
-            );
-          })}
-        </div>
-
-        {(!topics || topics.length === 0) && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">{t('Мавзулар топилмади', 'Темы не найдены')}</p>
-          </div>
-        )}
-      </div>
-    </div>
+    <PageShell title={lesson ? `${lesson.order_index}-${t('дарс', 'урок')}` : t('Дарс', 'Урок')} onBack={() => navigate('/lessons')} active="lessons">
+      <p className="-mt-1 mb-3.5 text-[14.5px]" style={{ color: 'var(--sa-muted)' }}>
+        {t('Тестни бошлаш учун мавзуни танланг', 'Выберите тему, чтобы начать тест')}
+      </p>
+      <LessonTopics lessonId={lessonId ?? ''} allTopics={allTopics ?? topics ?? []} allLessons={allLessons ?? []} />
+    </PageShell>
   );
 };
 

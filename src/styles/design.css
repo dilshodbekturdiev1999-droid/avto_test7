@@ -3,57 +3,66 @@
    Applied through <html data-design="c"> (set in index.html before paint).
    ========================================================================== */
 
-/* ---------- C · Sokin ---------- */
-html[data-design='c'] {
-  --background: 216 25% 96%;
-  --foreground: 222 30% 15%;
+/* ---------- A · Apple (the owner's site design: round 4 «3 Apple (списки)», round 5 «Сайт (Apple)»). Values from r6.css [data-v='3']. ---------- */
+html[data-design='a'] {
+  --background: 240 24% 96%;
+  --foreground: 225 15% 5%;
   --card: 0 0% 100%;
-  --card-foreground: 222 30% 15%;
+  --card-foreground: 225 15% 5%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 30% 15%;
-  --primary: 228 69% 47%;
+  --popover-foreground: 225 15% 5%;
+  --primary: 221 83% 53%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 216 28% 93%;
-  --secondary-foreground: 222 30% 17%;
-  --muted: 216 28% 93%;
-  --muted-foreground: 219 13% 42%;
-  --accent: 228 69% 47%;
+  --secondary: 240 17% 94%;
+  --secondary-foreground: 225 15% 8%;
+  --muted: 240 17% 94%;
+  --muted-foreground: 240 4% 44%;
+  --accent: 221 83% 53%;
   --accent-foreground: 0 0% 100%;
-  --destructive: 356 66% 50%;
-  --success: 162 58% 34%;
+  --destructive: 3 74% 52%;
+  --success: 150 72% 31%;
   --warning: 36 90% 46%;
-  --border: 216 28% 89%;
-  --input: 216 26% 85%;
-  --ring: 228 69% 47%;
+  --border: 240 10% 90%;
+  --input: 240 6% 83%;
+  --ring: 221 83% 53%;
   --radius: 0.875rem;
-  --d-font: 'Geologica Variable', 'Geologica', system-ui, sans-serif;
-  --d-num: 'Geologica Variable', 'Geologica', system-ui, sans-serif;
-  --d-shadow: 0 1px 2px hsl(222 40% 20% / 0.05), 0 8px 24px -12px hsl(222 40% 20% / 0.12);
+  --d-font: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  --d-disp: 'Inter Tight Variable', 'Inter Variable', system-ui, sans-serif;
+  --d-num: 'Inter Tight Variable', 'Inter Variable', system-ui, sans-serif;
+  --d-shadow: none;
   --d-band: 0 0% 100%;
-  --d-band-fg: 222 30% 15%;
+  --d-band-fg: 225 15% 5%;
+  /* raw palette for the site components */
+  --sa-bg: #F2F2F7; --sa-card: #FFFFFF; --sa-sub: #EEEEF3; --sa-line: #E3E3E8; --sa-line2: #D1D1D6;
+  --sa-text: #0B0C0F; --sa-muted: #6C6C74; --sa-faint: #A3A3AB;
+  --sa-blue: #2563EB; --sa-blue-soft: #E8EFFD; --sa-ok: #16884F; --sa-bad: #E0342B; --sa-ok-soft: #E7F5EC; --sa-bad-soft: #FCEBEA;
+  --sa-bar: rgba(249, 249, 251, 0.96);
 }
-html[data-design='c'].dark {
-  --background: 222 22% 9%;
-  --foreground: 220 23% 92%;
-  --card: 222 20% 13%;
-  --card-foreground: 220 23% 92%;
-  --popover: 222 20% 13%;
-  --popover-foreground: 220 23% 92%;
-  --primary: 227 100% 74%;
-  --primary-foreground: 225 35% 10%;
-  --secondary: 222 20% 17%;
-  --secondary-foreground: 220 23% 92%;
-  --muted: 222 20% 16%;
-  --muted-foreground: 220 12% 64%;
-  --accent: 227 100% 74%;
-  --success: 160 50% 48%;
-  --destructive: 356 72% 64%;
-  --border: 222 18% 20%;
-  --input: 222 18% 24%;
-  --ring: 227 100% 74%;
-  --d-shadow: 0 1px 2px hsl(0 0% 0% / 0.3), 0 10px 28px -14px hsl(0 0% 0% / 0.55);
-  --d-band: 222 20% 13%;
-  --d-band-fg: 220 23% 92%;
+html[data-design='a'].dark {
+  --background: 0 0% 0%;
+  --foreground: 240 8% 95%;
+  --card: 240 3% 11%;
+  --card-foreground: 240 8% 95%;
+  --popover: 240 3% 11%;
+  --popover-foreground: 240 8% 95%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 2% 18%;
+  --secondary-foreground: 240 8% 95%;
+  --muted: 240 2% 18%;
+  --muted-foreground: 240 4% 61%;
+  --accent: 217 91% 60%;
+  --success: 150 59% 48%;
+  --destructive: 3 100% 66%;
+  --border: 240 3% 19%;
+  --input: 240 2% 23%;
+  --ring: 217 91% 60%;
+  --d-band: 240 3% 11%;
+  --d-band-fg: 240 8% 95%;
+  --sa-bg: #000000; --sa-card: #1C1C1E; --sa-sub: #2C2C2E; --sa-line: #2E2E31; --sa-line2: #3A3A3C;
+  --sa-text: #F2F2F4; --sa-muted: #98989F; --sa-faint: #5E5E64;
+  --sa-blue: #3B82F6; --sa-blue-soft: #172338; --sa-ok: #32C27A; --sa-bad: #FF5A50; --sa-ok-soft: #132A1D; --sa-bad-soft: #331A18;
+  --sa-bar: rgba(22, 22, 24, 0.96);
 }
 
 /* ==========================================================================
@@ -64,7 +73,7 @@ html[data-design] .font-display,
 html[data-design] .font-sans {
   font-family: var(--d-font);
 }
-html[data-design] .font-display { letter-spacing: -0.02em; }
+html[data-design] .font-display { font-family: var(--d-disp); letter-spacing: -0.025em; }
 html[data-design] .font-mono,
 html[data-design] .mono,
 html[data-design] .label-mono,
@@ -160,12 +169,12 @@ html[data-design] .qn-item[aria-current='step'] { --tw-ring-offset-width: 0px; }
 
 
 /* C: soft surfaces, filled answer pills */
-html[data-design='c'] .qv-root { border-color: transparent; }
-html[data-design='c'] .qv-head { border-bottom-color: hsl(var(--border) / 0.6); }
-html[data-design='c'] .qv-answer[data-state='idle'], html[data-design='c'] .qv-answer[data-state='dim'] { background: hsl(var(--secondary)); border-color: transparent; }
-html[data-design='c'] .qv-key { border-radius: calc(var(--radius) - 4px); }
-html[data-design='c'] .qv-answer[data-state='idle'] .qv-key, html[data-design='c'] .qv-answer[data-state='dim'] .qv-key { background: hsl(var(--card)); color: hsl(var(--foreground)); }
-html[data-design='c'] .qn-item[data-state='idle'] { border-color: transparent; }
+html[data-design='a'] .qv-root { border-color: transparent; }
+html[data-design='a'] .qv-head { border-bottom-color: hsl(var(--border) / 0.6); }
+html[data-design='a'] .qv-answer[data-state='idle'], html[data-design='a'] .qv-answer[data-state='dim'] { background: hsl(var(--secondary)); border-color: transparent; }
+html[data-design='a'] .qv-key { border-radius: calc(var(--radius) - 4px); }
+html[data-design='a'] .qv-answer[data-state='idle'] .qv-key, html[data-design='a'] .qv-answer[data-state='dim'] .qv-key { background: hsl(var(--card)); color: hsl(var(--foreground)); }
+html[data-design='a'] .qn-item[data-state='idle'] { border-color: transparent; }
 
 /* ==========================================================================
    Home hub (rendered by HomeHub when a variant is active)
@@ -204,8 +213,8 @@ html[data-design='c'] .qn-item[data-state='idle'] { border-color: transparent; }
 
 
 /* C: soft cards */
-html[data-design='c'] .hub-item { border-color: transparent; }
-html[data-design='c'] .hub-icon { background: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border-radius: calc(var(--radius) - 2px); }
+html[data-design='a'] .hub-item { border-color: transparent; }
+html[data-design='a'] .hub-icon { background: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border-radius: calc(var(--radius) - 2px); }
 
 html[data-design] .qv-answer[data-state='correct'] { background: hsl(var(--success) / 0.12); border-color: hsl(var(--success)); }
 html[data-design] .qv-answer[data-state='wrong'] { background: hsl(var(--destructive) / 0.1); border-color: hsl(var(--destructive)); }

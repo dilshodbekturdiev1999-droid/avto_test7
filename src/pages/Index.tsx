@@ -1,284 +1,184 @@
-import type { ComponentType } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
+import { SiteShell } from '@/components/site/SiteShell';
+import { SIcon } from '@/components/ui/SIcon';
 import { useLessons, useAllTopics } from '@/hooks/useSupabase';
-import { LessonCard } from '@/components/LessonCard';
-import { ProgressRing } from '@/components/ProgressRing';
-import { Logo } from '@/components/landing/Logo';
-import { isLessonUnlocked, getLessonProgress, getTopicProgress, useProgressVersion } from '@/lib/progress';
-import { clearSession, useFullAccess, useAccessInfo } from '@/hooks/useAuth';
-import { useFriendsList } from '@/hooks/useFriends';
+import { getActiveTopic, getProgress, getTopicProgress, isTopicUnlocked, useProgressVersion } from '@/lib/progress';
+import { useAccessInfo, useFullAccess } from '@/hooks/useAuth';
 import { useDuelList } from '@/hooks/useDuels';
-import { useTestLang } from '@/hooks/useTestLang';
+import { useUserStats } from '@/hooks/useUserStats';
 import { useT } from '@/hooks/useT';
-import { LogOut, User, Trophy, BookOpen, ClipboardX, Layers, Bookmark, Search, MapPin, NotebookText } from 'lucide-react';
 import { getMistakeIds, getSavedCount, useStudyVersion } from '@/features/study/studyState';
-import { celebrateAllLessonsOnce, celebrateExamDayIfDue } from '@/features/celebrate/celebrate';
-import { useEffect } from 'react';
-import { UserCountBadge } from '@/components/UserCountBadge';
-import { AccessExpiryBadge } from '@/components/AccessExpiryBadge';
-import { cn } from '@/lib/utils';
-import { Topic, Lesson } from '@/types/database';
+import { celebrateAllLessonsOnce, celebrateExamDayIfDue, getExamDate } from '@/features/celebrate/celebrate';
+import { YAKUNIY_PATH } from '@/features/nav/routes';
+import { safeStorage } from '@/lib/safeStorage';
+
+// Where «Давом этиш» goes: the topic the student was in, otherwise the first open unfinished topic.
+function useContinueTarget(): { to: string; label: string | null } {
+  const { data: lessons } = useLessons();
+  const { data: allTopics } = useAllTopics();
+  const fullAccess = useFullAccess();
+  const { trialExpiresAt } = useAccessInfo();
+  useProgressVersion();
+  if (!lessons || !allTopics) return { to: '/lessons', label: null };
+  const active = getActiveTopic();
+  const activeTopic = active ? allTopics.find((tp) => tp.id === active) : undefined;
+  if (activeTopic && !getTopicProgress(activeTopic.id)?.completed) return { to: `/test/${activeTopic.id}`, label: activeTopic.title_uz_cyr };
+  const trialExpired = !fullAccess && !!trialExpiresAt && new Date(trialExpiresAt).getTime() < Date.now();
+  for (let i = 0; i < lessons.length; i++) {
+    if (!(fullAccess || (i === 0 && !trialExpired))) continue;
+    const topics = allTopics.filter((tp) => tp.lesson_id === lessons[i].id).sort((a, b) => a.order_index - b.order_index);
+    const next = topics.find((tp) => !getTopicProgress(tp.id)?.completed && isTopicUnlocked(tp.id, allTopics, lessons));
+    if (next) return { to: `/lesson/${lessons[i].id}`, label: `${i + 1}-дарс · ${next.title_uz_cyr}` };
+  }
+  return { to: '/lessons', label: null };
+}
 
 const Index = () => {
   const navigate = useNavigate();
-  useProgressVersion();
-  const { data: lessons, isLoading, isError } = useLessons();
-  const { data: allTopics } = useAllTopics();
   const queryClient = useQueryClient();
-  const { data: friendsData } = useFriendsList();
-  const { data: duelData } = useDuelList();
-  const friendRequestCount = friendsData?.incoming?.length ?? 0;
-  const duelInviteCount = duelData?.incoming?.length ?? 0;
-  useStudyVersion();
-  const mistakeCount = getMistakeIds().length;
-  const savedCount = getSavedCount();
-
-  const totalTopics = allTopics?.length ?? 0;
-  const completedTopics = allTopics?.filter((tp) => getTopicProgress(tp.id)?.completed).length ?? 0;
-  const overallPct = totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0;
-  useEffect(() => {
-    if (totalTopics > 0 && overallPct >= 100) celebrateAllLessonsOnce();
-    else celebrateExamDayIfDue();
-  }, [overallPct, totalTopics]);
-
-  // Trial users (not in allowed_phones) only get lesson 1 + the Yakuniy test;
-  // paid/full users get everything. Missing flag = full (existing sessions).
-  // useFullAccess (not a raw localStorage read) so the lesson list re-renders
-  // the moment checkSession() upgrades this student in the background --
-  // otherwise lessons kept showing "call the office" even after the number
-  // was added to allowed_phones, until the student happened to hard-refresh.
-  const fullAccess = useFullAccess();
-  const { trialExpiresAt } = useAccessInfo();
-  const trialExpired = !fullAccess && !!trialExpiresAt && new Date(trialExpiresAt).getTime() < Date.now();
-  const [testLang, setTestLang] = useTestLang();
   const t = useT();
+  useProgressVersion();
+  useStudyVersion();
+  const { isError } = useLessons();
+  const { data: allTopics } = useAllTopics();
+  const { data: duelData } = useDuelList();
+  const { data: stats } = useUserStats();
+  const cont = useContinueTarget();
 
-  const handleLogout = () => {
-    clearSession();
-    navigate('/auth');
-  };
+  const login = safeStorage.getItem('login') ?? '';
+  const total = allTopics?.length ?? 0;
+  const done = allTopics?.filter((tp) => getTopicProgress(tp.id)?.completed).length ?? 0;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  useEffect(() => {
+    if (total > 0 && pct >= 100) celebrateAllLessonsOnce();
+    else celebrateExamDayIfDue();
+  }, [pct, total]);
+  const answered = stats ? stats.correct_answers + stats.wrong_answers : null;
+  const examDate = getExamDate();
+  const daysLeft = examDate ? Math.ceil((new Date(`${examDate}T00:00:00`).getTime() - new Date(new Date().toDateString()).getTime()) / 86400000) : null;
+  const mistakes = getMistakeIds().length;
+  const invites = duelData?.incoming?.length ?? 0;
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">{t('Юкланмоқда...', 'Загрузка...')}</div>
-      </div>
-    );
-  }
+  // «Ечилган мавзулар»: topics with a result. The server keeps only the best score per topic (no dates),
+  // so this replaces the mock's «Охирги тестлар» list, which would need a dated history we do not store.
+  const progress = getProgress();
+  const tried = (allTopics ?? [])
+    .filter((tp) => (progress[tp.id]?.bestScore ?? 0) > 0)
+    .sort((a, b) => Number(!!progress[a.id]?.completed) - Number(!!progress[b.id]?.completed))
+    .slice(0, 3);
 
-  // A failed request used to fall through to the "no lessons found" empty
-  // state below -- which reads as "this account has no content" rather than
-  // "the connection dropped", and left the student with no way forward
-  // short of reloading the whole page.
-  if (isError) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-muted-foreground max-w-sm">
-          {t(
-            'Маълумотларни юклаб бўлмади. Интернет алоқасини текшириб, қайта уриниб кўринг.',
-            'Не удалось загрузить данные. Проверьте интернет и попробуйте ещё раз.'
-          )}
-        </p>
-        <Button onClick={() => queryClient.refetchQueries()} className="rounded-full font-bold">
-          {t('Қайта уриниш', 'Повторить')}
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen relative">
-      {/* ambient background */}
-
-      {/* top toolbar */}
-      <div className="sticky top-0 z-30 px-3 sm:px-4 pt-3">
-        <div className="max-w-6xl mx-auto glass-strong rounded-2xl px-3 sm:px-4 h-14 flex items-center justify-between">
-          <Logo height={24} />
-          <div className="flex items-center gap-1.5">
-            <TestLangSwitch lang={testLang} onChange={setTestLang} />
-            <ToolbarButton icon={Trophy} label={t('Турнир', 'Турнир')} badge={duelInviteCount} onClick={() => navigate('/leaderboard')} />
-            <ToolbarButton icon={BookOpen} label={t("Ma'lumotlar", 'Материалы')} onClick={() => navigate('/foydali-malumotlar')} />
-            <ToolbarButton icon={User} label={t('Профиль', 'Профиль')} badge={friendRequestCount} onClick={() => navigate('/profile')} />
-            <ToolbarButton icon={LogOut} label={t('Чиқиш', 'Выход')} onClick={handleLogout} danger />
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 pt-10 pb-16">
-        {/* hero header */}
-        <div className="grid md:grid-cols-[1.4fr_1fr] gap-5 items-stretch mb-10">
-          <div className="reveal reveal-show">
-            <div className="mb-3"><UserCountBadge /></div>
-            <div className="mb-3"><AccessExpiryBadge /></div>
-            <h1 className="font-display font-extrabold tracking-tightest text-[clamp(2rem,5vw,3.25rem)] leading-[1.02] text-foreground mb-3">
-              {t('ЙҲҚ', 'ПДД')} <span className="text-gradient-primary">{t('тестлари', 'тесты')}</span>
-            </h1>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-md">
-              {t(
-                'Дарсни танланг ва тестларни ечишни бошланг. Ҳар бир мавзу — мнемоника усулида.',
-                'Выберите урок и начните решать тесты. Каждая тема — по методу мнемоники.'
-              )}
-            </p>
-          </div>
-
-          {/* overall progress card */}
-          <div className="reveal reveal-show glass-card rounded-3xl p-5 flex items-center gap-5" style={{ animationDelay: '80ms' }}>
-            <ProgressRing value={overallPct} size={92} stroke={7} tone={overallPct >= 100 ? 'success' : 'primary'}>
-              <div className="text-center">
-                <p className="text-xl font-black tabular-nums text-foreground leading-none">{Math.round(overallPct)}%</p>
-              </div>
-            </ProgressRing>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">{t('Умумий прогресс', 'Общий прогресс')}</p>
-              <p className="text-2xl font-black text-foreground tabular-nums leading-none font-display">
-                {completedTopics}<span className="text-muted-foreground text-lg">/{totalTopics}</span>
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">{t('мавзу тугатилган', 'тем завершено')}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* study tools */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
-          {[
-            { to: '/mistakes', icon: ClipboardX, label: 'Mening Xatolarim', badge: mistakeCount },
-            { to: '/all-questions', icon: Layers, label: '1200+ savollar', badge: 0 },
-            { to: '/saved', icon: Bookmark, label: 'Saqlanganlar', badge: savedCount },
-            { to: '/search', icon: Search, label: 'Qidiruv', badge: 0 },
-            { to: '/cheat-sheets', icon: NotebookText, label: 'Shpargalkalar', badge: 0 },
-            { to: '/exam-centers', icon: MapPin, label: 'Imtihon markazlari', badge: 0 },
-          ].map(({ to, icon: Icon, label, badge }) => (
-            <button
-              key={to}
-              type="button"
-              onClick={() => navigate(to)}
-              className="relative glass-card rounded-2xl p-4 text-left flex flex-col gap-3 hover:border-primary/40 transition-colors"
-            >
-              <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Icon className="w-5 h-5" /></span>
-              <span className="font-display font-bold text-sm text-foreground leading-tight">{label}</span>
-              {badge > 0 && (
-                <span className="absolute top-3 right-3 flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">{badge}</span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {lessons?.map((lesson, index) => (
-            <LessonCardWithProgress
-              key={lesson.id}
-              lessonId={lesson.id}
-              title={lesson.title}
-              index={index}
-              fullAccess={fullAccess}
-              trialExpired={trialExpired}
-              allTopics={allTopics || []}
-              allLessons={lessons || []}
-              onClick={() => navigate(`/lesson/${lesson.id}`)}
-            />
-          ))}
-        </div>
-        {(!lessons || lessons.length === 0) && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">{t('Дарслар топилмади', 'Уроки не найдены')}</p>
-          </div>
+  const hero = (
+    <div className="sa-card p-[18px] lg:p-[26px] lg:h-full flex flex-col justify-between">
+      <div className="flex items-center justify-between">
+        <span style={{ color: 'var(--sa-muted)' }} className="text-sm">{t('Имтиҳонга тайёргарлик', 'Готовность к экзамену')}</span>
+        {daysLeft !== null && daysLeft >= 0 ? (
+          <button type="button" onClick={() => navigate('/profile')} className="flex items-center gap-1 text-[13.5px] font-semibold" style={{ color: 'var(--sa-blue)' }}>
+            <SIcon name="calendar" variant="line" className="text-base" />{daysLeft} {t('кун қолди', 'дн. осталось')}
+          </button>
+        ) : (
+          <button type="button" onClick={() => navigate('/profile')} className="text-[13.5px] font-medium" style={{ color: 'var(--sa-blue)' }}>
+            {t('Имтиҳон кунини белгиланг', 'Укажите дату экзамена')}
+          </button>
         )}
+      </div>
+      <div className="sa-num text-[58px] lg:text-[84px] font-semibold leading-none tracking-[-0.05em] mt-2.5 mb-3.5">
+        {pct}<span className="text-[26px] lg:text-[36px] ml-0.5" style={{ color: 'var(--sa-muted)' }}>%</span>
+      </div>
+      <div>
+        <div className="sa-bar"><i style={{ width: `${pct}%` }} /></div>
+        <div className="sa-num text-[13.5px] mt-[9px] mb-4" style={{ color: 'var(--sa-muted)' }}>
+          {done} / {total} {t('мавзу', 'тем')}{answered !== null ? ` · ${answered} ${t('савол', 'вопросов')}` : ''}
+        </div>
+        <button type="button" onClick={() => navigate(cont.to)} className="w-full flex items-center gap-2.5 h-14 px-4 rounded-[14px] text-left text-white" style={{ background: 'var(--sa-blue)' }}>
+          <SIcon name="play" variant="duo" className="text-xl" />
+          <span className="flex-1 min-w-0 leading-tight">
+            <b className="block font-semibold">{t('Давом этиш', 'Продолжить')}</b>
+            <span className="block text-[12.5px] opacity-80 truncate">{cont.label ?? t('Тест ечишни бошланг', 'Начните решать тесты')}</span>
+          </span>
+          <SIcon name="alt-arrow-right" variant="line" />
+        </button>
       </div>
     </div>
   );
-};
 
-function TestLangSwitch({ lang, onChange }: { lang: 'uz' | 'ru'; onChange: (l: 'uz' | 'ru') => void }) {
-  return (
-    <div className="flex items-center rounded-full bg-foreground/5 p-0.5 mr-1">
-      {(['uz', 'ru'] as const).map((l) => (
-        <button
-          key={l}
-          onClick={() => onChange(l)}
-          className={cn(
-            'px-2.5 h-8 rounded-full text-xs font-bold uppercase transition-colors',
-            lang === l ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          {l}
+  const four = (
+    <div className="sa-b3grid">
+      {[
+        { icon: 'book-2', title: t('Дарслар', 'Уроки'), sub: `${done} / ${total} ${t('мавзу', 'тем')}`, to: '/lessons', cnt: 0 },
+        { icon: 'close-circle', title: t('Хатоларим', 'Мои ошибки'), sub: t('Тўғри ечмагунча', 'Пока не решите верно'), to: '/mistakes', cnt: mistakes },
+        { icon: 'flag', title: t('Якуний тест', 'Итоговый тест'), sub: '20 · 50 · 100 · 200', to: YAKUNIY_PATH, cnt: 0 },
+        { icon: 'cup-star', title: t('Турнир', 'Турнир'), sub: invites > 0 ? `${invites} ${t('таклиф', 'вызов')}` : t('Тасодифий рақиб', 'Случайный соперник'), to: '/leaderboard', cnt: 0 },
+      ].map((b) => (
+        <button key={b.to} type="button" className="sa-b3" onClick={() => navigate(b.to)}>
+          <SIcon name={b.icon} variant="duo" />
+          {b.cnt > 0 && <span className="sa-cnt sa-num">{b.cnt}</span>}
+          <span><b>{b.title}</b><small>{b.sub}</small></span>
         </button>
       ))}
     </div>
   );
-}
 
-function ToolbarButton({
-  icon: Icon,
-  label,
-  badge = 0,
-  onClick,
-  danger,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  badge?: number;
-  onClick: () => void;
-  danger?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'relative inline-flex items-center gap-2 rounded-full px-3 h-9 text-sm font-semibold transition-colors',
-        'text-muted-foreground hover:text-foreground hover:bg-foreground/5',
-        danger && 'hover:text-destructive',
-      )}
-    >
-      <Icon className="w-4 h-4" />
-      <span className="hidden sm:inline">{label}</span>
-      {badge > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
-          {badge}
-        </span>
-      )}
-    </button>
+  const triedList = (
+    <div className="sa-group">
+      {tried.length === 0 ? (
+        <div className="sa-li noic"><div className="tx"><small>{t('Ҳали тест ечилмаган', 'Тестов пока нет')}</small></div></div>
+      ) : tried.map((tp) => {
+        const p = progress[tp.id];
+        return (
+          <button key={tp.id} type="button" className="sa-li noic" onClick={() => navigate(`/test/${tp.id}`)}>
+            <div className="tx"><b>{tp.title_uz_cyr}</b><small>{p?.completed ? t('Ўтилди', 'Пройдено') : t('Ўтиш учун 95% керак', 'Нужно 95%')}</small></div>
+            <b className="sa-num font-bold" style={{ color: p?.completed ? 'var(--sa-ok)' : 'var(--sa-bad)' }}>{p?.bestScore ?? 0}%</b>
+          </button>
+        );
+      })}
+    </div>
   );
-}
 
-function LessonCardWithProgress({
-  lessonId,
-  title,
-  index,
-  fullAccess,
-  trialExpired,
-  allTopics,
-  allLessons,
-  onClick,
-}: {
-  lessonId: string;
-  title: string;
-  index: number;
-  fullAccess: boolean;
-  trialExpired: boolean;
-  allTopics: Topic[];
-  allLessons: Lesson[];
-  onClick: () => void;
-}) {
-  // One all-topics list instead of a server call per lesson card.
-  const topicCount = allTopics.filter((tp) => tp.lesson_id === lessonId).length;
-  // Trial gate: only lesson 1 (index 0) is open to everyone, and only while
-  // the 7-day trial window hasn't run out; everything else, including the
-  // Yakuniy (final test) lesson, needs full (paid) access.
-  const isUnlocked = (fullAccess || (index === 0 && !trialExpired)) && isLessonUnlocked(lessonId, allTopics, allLessons);
-  const lessonProgress = getLessonProgress(lessonId, allTopics);
+  const infoRows = (
+    <div className="sa-group">
+      {[
+        { icon: 'signpost-2', title: t('Йўл белгилари', 'Дорожные знаки'), val: `248 ${t('та', '')}`, to: '/foydali-malumotlar' },
+        { icon: 'notes', title: t('Шпаргалкалар', 'Шпаргалки'), val: `9 ${t('та', '')}`, to: '/cheat-sheets' },
+        { icon: 'map-point', title: t('Имтиҳон марказлари', 'Экзаменационные центры'), val: `14 ${t('та', '')}`, to: '/exam-centers' },
+        { icon: 'bookmark', title: t('Сақланганлар', 'Сохранённые'), val: `${getSavedCount()} ${t('та', '')}`, to: '/saved' },
+      ].map((r) => (
+        <button key={r.to} type="button" className="sa-li" onClick={() => navigate(r.to)}>
+          <SIcon name={r.icon} variant="duo" />
+          <div className="tx"><b>{r.title}</b></div>
+          <span className="val sa-num">{r.val}</span>
+          <SIcon name="alt-arrow-right" variant="line" className="chev" />
+        </button>
+      ))}
+    </div>
+  );
 
   return (
-    <LessonCard
-      title={title}
-      topicCount={topicCount}
-      completedCount={lessonProgress.completed}
-      index={index}
-      isUnlocked={isUnlocked}
-      onClick={onClick}
-    />
+    <SiteShell tab="home" title={t('Асосий', 'Главная')} deskTitle={`${t('Хайрли кун', 'Добрый день')}, ${login}`}>
+      {isError && (
+        <button type="button" onClick={() => queryClient.refetchQueries()} className="mb-3 text-sm font-medium" style={{ color: 'var(--sa-blue)' }}>
+          {t('Маълумотларни юклаб бўлмади — қайта уриниш', 'Не удалось загрузить данные — повторить')}
+        </button>
+      )}
+      <div className="grid lg:grid-cols-[1.1fr_1fr] gap-2.5 lg:gap-4 items-stretch">
+        {hero}
+        <div className="flex flex-col gap-3">
+          {four}
+        </div>
+      </div>
+      <div className="grid lg:grid-cols-[1.1fr_1fr] gap-x-4">
+        <div className="hidden lg:block">
+          <div className="sa-sec"><span>{t('Ечилган мавзулар', 'Решённые темы')}</span><button type="button" onClick={() => navigate('/lessons')}>{t('Барчаси', 'Все')}</button></div>
+          {triedList}
+        </div>
+        <div>
+          <div className="sa-sec">{t('Маълумот', 'Справка')}</div>
+          {infoRows}
+        </div>
+      </div>
+    </SiteShell>
   );
-}
+};
 
 export default Index;
