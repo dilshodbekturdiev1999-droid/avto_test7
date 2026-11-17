@@ -15,7 +15,7 @@ interface QuestionViewProps {
   headerAction?: ReactNode;
 }
 
-const ANSWER_LABELS = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З'];
+const ANSWER_LABELS = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8'];
 const FALLBACK_IMAGES = [placeholder1, placeholder2, placeholder3];
 
 export function QuestionView({ question, selectedAnswer, onSelectAnswer, headerAction }: QuestionViewProps) {
@@ -142,7 +142,7 @@ export function QuestionView({ question, selectedAnswer, onSelectAnswer, headerA
                   "qv-key w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0",
                   labelStyle
                 )}>
-                  {ANSWER_LABELS[idx] || String(idx + 1)}
+                  {ANSWER_LABELS[idx] || `F${idx + 1}`}
                 </span>
                 <span className="text-foreground">{answer.answer_uz_cyr}</span>
               </button>

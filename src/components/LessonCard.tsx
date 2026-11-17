@@ -1,5 +1,6 @@
+import { ArrowRight, Lock, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SIcon } from '@/components/ui/SIcon';
+import { ProgressRing } from '@/components/ProgressRing';
 import { TariffCheckoutDialog } from '@/components/TariffCheckoutDialog';
 import { useT } from '@/hooks/useT';
 
@@ -12,52 +13,80 @@ interface LessonCardProps {
   onClick: () => void;
 }
 
-// One lesson in the list: number square, title, topics done, thin bar while in progress.
 export function LessonCard({ title, topicCount, completedCount, index, isUnlocked, onClick }: LessonCardProps) {
-  const done = completedCount === topicCount && topicCount > 0;
-  const started = completedCount > 0 && !done;
+  const isFullyCompleted = completedCount === topicCount && topicCount > 0;
   const pct = topicCount > 0 ? (completedCount / topicCount) * 100 : 0;
   const t = useT();
 
-  // A <button> can't contain another interactive <button> (the "pay" link below),
-  // so this is a <div> with button semantics.
+  // A <button> can't contain another interactive <button> (invalid HTML,
+  // and a disabled outer button blocks pointer events on everything inside
+  // it, which silently swallowed clicks on the "pay" link below). Plain
+  // <div> with the same click semantics instead.
   return (
     <div
       role={isUnlocked ? 'button' : undefined}
       tabIndex={isUnlocked ? 0 : undefined}
       onClick={isUnlocked ? onClick : undefined}
       onKeyDown={isUnlocked ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick() : undefined}
+      style={{ animationDelay: `${index * 60}ms` }}
       className={cn(
-        'w-full text-left flex items-center gap-3 p-3 pr-4',
-        started ? 'w-card-lg' : 'w-card',
-        isUnlocked ? 'cursor-pointer w-press' : 'opacity-70',
+        'group reveal reveal-show relative w-full text-left p-7 rounded-3xl transition-all duration-300 overflow-hidden',
+        !isUnlocked && 'opacity-55 glass',
+        isUnlocked && 'glass-card card-hover cursor-pointer',
       )}
     >
-      <span className={cn('w-lnum w-num', started && 'cur', done && 'done')}>{index + 1}</span>
-      <div className="min-w-0 flex-1">
-        <p className="w-h2 text-base leading-snug text-foreground">{title}</p>
-        {isUnlocked ? (
-          <p className="text-[13px] text-muted-foreground w-num">
-            {completedCount} / {topicCount} {t('мавзу', 'тем')}
+      <div className="relative flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground mb-1.5">
+            <span className={cn(isUnlocked ? 'text-primary' : 'text-muted-foreground')}>{String(index + 1).padStart(2, '0')}</span>
+            {' · '}{isUnlocked ? t('Дарс', 'Урок') : t('Ёпиқ', 'Закрыто')}
           </p>
+          <h3 className={cn('font-bold text-xl leading-tight', isUnlocked ? 'text-foreground' : 'text-muted-foreground')}>
+            {title}
+          </h3>
+        </div>
+
+        {isUnlocked ? (
+          <ProgressRing value={pct} size={54} stroke={5} tone={isFullyCompleted ? 'success' : 'primary'} className="shrink-0">
+            {isFullyCompleted ? (
+              <Check className="w-5 h-5 text-success" strokeWidth={3} />
+            ) : (
+              <span className="text-[12px] font-bold tabular-nums font-mono text-foreground">{Math.round(pct)}%</span>
+            )}
+          </ProgressRing>
         ) : (
-          <TariffCheckoutDialog
-            trigger={
-              <button type="button" onClick={(e) => e.stopPropagation()} className="text-[13px] font-semibold text-primary">
-                {t('Тўлиқ доступ учун тўлаш →', 'Оплатить полный доступ →')}
-              </button>
-            }
-          />
+          <span className="w-12 h-12 rounded-2xl bg-foreground/5 flex items-center justify-center shrink-0">
+            <Lock className="w-5 h-5 text-muted-foreground" />
+          </span>
         )}
-        {started && <div className="w-bar mt-2"><i style={{ width: `${pct}%` }} /></div>}
       </div>
-      {!isUnlocked ? (
-        <SIcon name="lock-keyhole-minimalistic" variant="bold" className="text-xl text-muted-foreground" />
-      ) : done ? (
-        <SIcon name="check-circle" variant="bold" className="text-2xl text-success" />
-      ) : (
-        <SIcon name="alt-arrow-right" variant="line" className="text-muted-foreground/60" />
-      )}
+
+      <div className="relative mt-6 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {isUnlocked ? (
+            <span className="tabular-nums">
+              {completedCount}/{topicCount} {t('мавзу тугатилган', 'тем завершено')}
+            </span>
+          ) : (
+            <TariffCheckoutDialog
+              trigger={
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-bold text-primary underline underline-offset-2 hover:opacity-80 cursor-pointer"
+                >
+                  {t('Тўлиқ доступ учун тўлаш →', 'Оплатить полный доступ →')}
+                </button>
+              }
+            />
+          )}
+        </p>
+        {isUnlocked && (
+          <span className="inline-flex items-center gap-1 text-sm font-bold text-primary opacity-70 group-hover:opacity-100 group-hover:gap-2 transition-all">
+            {t('Очиш', 'Открыть')} <ArrowRight className="w-4 h-4" />
+          </span>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-/* Fonts: Inter + Inter Tight, self-hosted via @fontsource (imported in main.tsx). */
+/* Fonts are linked in index.html (Geologica for the UI, IBM Plex Sans for the 3D celebrations). */
 
 @tailwind base;
 @tailwind components;
@@ -111,7 +111,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter Variable', system-ui, sans-serif;
+    font-family: 'IBM Plex Sans', sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -133,17 +133,17 @@
 @layer utilities {
   /* ---- Display typography ---- */
   .font-display {
-    font-family: 'Inter Variable', system-ui, sans-serif;
+    font-family: 'IBM Plex Sans', sans-serif;
     font-weight: 700;
     letter-spacing: -0.03em;
   }
   /* Monospace accent — the signature "technical premium" detail (à la lucien.com):
      eyebrows, labels, stats, numbers. */
   .font-mono, .mono {
-    font-family: 'Inter Variable', ui-monospace, monospace;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
   }
   .label-mono {
-    font-family: 'Inter Variable', ui-monospace, monospace;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     font-weight: 500;

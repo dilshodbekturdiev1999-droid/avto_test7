@@ -3,64 +3,57 @@
    Applied through <html data-design="c"> (set in index.html before paint).
    ========================================================================== */
 
-/* ---------- A · Apple (owner's pick for the site, round 4 variant 3) ---------- */
-html[data-design='a'] {
-  --background: 240 11% 96%;
-  --foreground: 240 6% 7%;
+/* ---------- C · Sokin ---------- */
+html[data-design='c'] {
+  --background: 216 25% 96%;
+  --foreground: 222 30% 15%;
   --card: 0 0% 100%;
-  --card-foreground: 240 6% 7%;
+  --card-foreground: 222 30% 15%;
   --popover: 0 0% 100%;
-  --popover-foreground: 240 6% 7%;
-  --primary: 218 100% 50%;
+  --popover-foreground: 222 30% 15%;
+  --primary: 228 69% 47%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 9% 94%;
-  --secondary-foreground: 240 6% 10%;
-  --muted: 240 9% 94%;
-  --muted-foreground: 240 3% 43%;
-  --accent: 218 100% 50%;
+  --secondary: 216 28% 93%;
+  --secondary-foreground: 222 30% 17%;
+  --muted: 216 28% 93%;
+  --muted-foreground: 219 13% 42%;
+  --accent: 228 69% 47%;
   --accent-foreground: 0 0% 100%;
-  --destructive: 4 74% 53%;
-  --success: 154 76% 32%;
+  --destructive: 356 66% 50%;
+  --success: 162 58% 34%;
   --warning: 36 90% 46%;
-  --border: 240 6% 90%;
-  --input: 240 6% 86%;
-  --ring: 218 100% 50%;
+  --border: 216 28% 89%;
+  --input: 216 26% 85%;
+  --ring: 228 69% 47%;
   --radius: 0.875rem;
-  --d-font: 'Inter Variable', system-ui, -apple-system, sans-serif;
-  --d-disp: 'Inter Tight Variable', 'Inter Variable', system-ui, sans-serif;
-  --d-num: 'Inter Tight Variable', 'Inter Variable', system-ui, sans-serif;
-  --d-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 6px 18px -12px rgb(0 0 0 / 0.14);
-  --d-shadow-lg: 0 1px 2px rgb(0 0 0 / 0.05), 0 16px 34px -18px rgb(0 0 0 / 0.22);
-  --d-hero: hsl(0 0% 100%);
-  --d-glass: rgb(255 255 255 / 0.82);
+  --d-font: 'Geologica', system-ui, sans-serif;
+  --d-num: 'Geologica', system-ui, sans-serif;
+  --d-shadow: 0 1px 2px hsl(222 40% 20% / 0.05), 0 8px 24px -12px hsl(222 40% 20% / 0.12);
   --d-band: 0 0% 100%;
-  --d-band-fg: 240 6% 7%;
+  --d-band-fg: 222 30% 15%;
 }
-html[data-design='a'].dark {
-  --background: 0 0% 0%;
-  --foreground: 0 0% 98%;
-  --card: 240 3% 11%;
-  --card-foreground: 0 0% 98%;
-  --popover: 240 3% 11%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 218 100% 61%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 240 2% 18%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 240 2% 18%;
-  --muted-foreground: 240 2% 57%;
-  --accent: 218 100% 61%;
-  --success: 152 50% 46%;
-  --destructive: 4 80% 63%;
-  --border: 240 2% 18%;
-  --input: 240 2% 24%;
-  --ring: 218 100% 61%;
-  --d-shadow: 0 0 0 1px rgb(255 255 255 / 0.04) inset;
-  --d-shadow-lg: 0 0 0 1px rgb(255 255 255 / 0.06) inset;
-  --d-hero: hsl(240 3% 11%);
-  --d-glass: rgb(28 28 30 / 0.85);
-  --d-band: 240 3% 11%;
-  --d-band-fg: 0 0% 98%;
+html[data-design='c'].dark {
+  --background: 222 22% 9%;
+  --foreground: 220 23% 92%;
+  --card: 222 20% 13%;
+  --card-foreground: 220 23% 92%;
+  --popover: 222 20% 13%;
+  --popover-foreground: 220 23% 92%;
+  --primary: 227 100% 74%;
+  --primary-foreground: 225 35% 10%;
+  --secondary: 222 20% 17%;
+  --secondary-foreground: 220 23% 92%;
+  --muted: 222 20% 16%;
+  --muted-foreground: 220 12% 64%;
+  --accent: 227 100% 74%;
+  --success: 160 50% 48%;
+  --destructive: 356 72% 64%;
+  --border: 222 18% 20%;
+  --input: 222 18% 24%;
+  --ring: 227 100% 74%;
+  --d-shadow: 0 1px 2px hsl(0 0% 0% / 0.3), 0 10px 28px -14px hsl(0 0% 0% / 0.55);
+  --d-band: 222 20% 13%;
+  --d-band-fg: 220 23% 92%;
 }
 
 /* ==========================================================================
@@ -71,7 +64,7 @@ html[data-design] .font-display,
 html[data-design] .font-sans {
   font-family: var(--d-font);
 }
-html[data-design] .font-display, html[data-design] .d-disp { font-family: var(--d-disp); letter-spacing: -0.025em; }
+html[data-design] .font-display { letter-spacing: -0.02em; }
 html[data-design] .font-mono,
 html[data-design] .mono,
 html[data-design] .label-mono,
@@ -167,12 +160,12 @@ html[data-design] .qn-item[aria-current='step'] { --tw-ring-offset-width: 0px; }
 
 
 /* C: soft surfaces, filled answer pills */
-html[data-design='a'] .qv-root { border-color: transparent; }
-html[data-design='a'] .qv-head { border-bottom-color: hsl(var(--border) / 0.6); }
-html[data-design='a'] .qv-answer[data-state='idle'], html[data-design='a'] .qv-answer[data-state='dim'] { background: hsl(var(--secondary)); border-color: transparent; }
-html[data-design='a'] .qv-key { border-radius: calc(var(--radius) - 4px); }
-html[data-design='a'] .qv-answer[data-state='idle'] .qv-key, html[data-design='a'] .qv-answer[data-state='dim'] .qv-key { background: hsl(var(--card)); color: hsl(var(--foreground)); }
-html[data-design='a'] .qn-item[data-state='idle'] { border-color: transparent; }
+html[data-design='c'] .qv-root { border-color: transparent; }
+html[data-design='c'] .qv-head { border-bottom-color: hsl(var(--border) / 0.6); }
+html[data-design='c'] .qv-answer[data-state='idle'], html[data-design='c'] .qv-answer[data-state='dim'] { background: hsl(var(--secondary)); border-color: transparent; }
+html[data-design='c'] .qv-key { border-radius: calc(var(--radius) - 4px); }
+html[data-design='c'] .qv-answer[data-state='idle'] .qv-key, html[data-design='c'] .qv-answer[data-state='dim'] .qv-key { background: hsl(var(--card)); color: hsl(var(--foreground)); }
+html[data-design='c'] .qn-item[data-state='idle'] { border-color: transparent; }
 
 /* ==========================================================================
    Home hub (rendered by HomeHub when a variant is active)
@@ -211,82 +204,10 @@ html[data-design='a'] .qn-item[data-state='idle'] { border-color: transparent; }
 
 
 /* C: soft cards */
-html[data-design='a'] .hub-item { border-color: transparent; }
-html[data-design='a'] .hub-icon { background: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border-radius: calc(var(--radius) - 2px); }
+html[data-design='c'] .hub-item { border-color: transparent; }
+html[data-design='c'] .hub-icon { background: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border-radius: calc(var(--radius) - 2px); }
 
 html[data-design] .qv-answer[data-state='correct'] { background: hsl(var(--success) / 0.12); border-color: hsl(var(--success)); }
 html[data-design] .qv-answer[data-state='wrong'] { background: hsl(var(--destructive) / 0.1); border-color: hsl(var(--destructive)); }
 html[data-design] .qv-answer[data-state='correct'] .qv-key { background: hsl(var(--success)); color: #fff; }
 html[data-design] .qv-answer[data-state='wrong'] .qv-key { background: hsl(var(--destructive)); color: #fff; }
-
-/* ==========================================================================
-   Тёплый: building blocks used by the new screens (home, tabs, lists)
-   ========================================================================== */
-.w-card { background: hsl(var(--card)); border-radius: 1.125rem; box-shadow: var(--d-shadow); }
-.w-card-lg { background: hsl(var(--card)); border-radius: 1.25rem; box-shadow: var(--d-shadow-lg); }
-.w-hero { background: var(--d-hero); color: #fff; border-radius: 1.625rem; box-shadow: var(--d-shadow-lg); }
-.w-title { font-family: var(--d-disp); font-weight: 800; font-size: 2rem; line-height: 1.08; letter-spacing: -0.03em; }
-.w-h2 { font-family: var(--d-disp); font-weight: 700; letter-spacing: -0.02em; }
-.w-num { font-family: var(--d-num); font-variant-numeric: tabular-nums; }
-.w-icon { color: hsl(var(--primary)); }
-.w-ticks { display: flex; gap: 3px; height: 8px; }
-.w-ticks i { flex: 1; border-radius: 2px; background: rgb(255 255 255 / 0.22); }
-.w-ticks i.d { background: #fff; }
-.w-ticks i.h { background: rgb(255 255 255 / 0.6); }
-.w-acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.625rem; }
-.w-act { display: flex; align-items: center; gap: 0.7rem; min-height: 4.625rem; padding: 0.75rem; text-align: left; background: hsl(var(--card)); border-radius: 1.125rem; box-shadow: var(--d-shadow); transition: transform 0.12s ease-out; }
-.w-act:active, .w-press:active { transform: scale(0.97); }
-.w-act b { display: block; font-weight: 650; font-size: 0.9375rem; letter-spacing: -0.01em; white-space: nowrap; color: hsl(var(--foreground)); }
-.w-act small { display: block; font-size: 0.75rem; color: hsl(var(--muted-foreground)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.w-list { background: hsl(var(--card)); border-radius: 1.125rem; box-shadow: var(--d-shadow); overflow: hidden; }
-.w-row { position: relative; display: flex; align-items: center; gap: 0.875rem; width: 100%; min-height: 3.75rem; padding: 0 1rem; text-align: left; }
-.w-row + .w-row::before { content: ''; position: absolute; left: 3.5rem; right: 0; top: 0; height: 1px; background: hsl(var(--border)); }
-.w-row:active { background: hsl(var(--secondary)); }
-.w-sec { display: flex; justify-content: space-between; align-items: baseline; margin: 1.375rem 0 0.7rem; }
-.w-sec b { font-family: var(--d-disp); font-size: 1.125rem; font-weight: 700; letter-spacing: -0.02em; }
-.w-lnum { width: 2.75rem; height: 2.75rem; border-radius: 0.8rem; background: hsl(var(--secondary)); color: hsl(var(--muted-foreground)); display: flex; align-items: center; justify-content: center; font-family: var(--d-disp); font-weight: 700; font-size: 1.0625rem; flex-shrink: 0; }
-.w-lnum.cur { background: hsl(var(--primary)); color: #fff; }
-.w-lnum.done { background: hsl(var(--success) / 0.12); color: hsl(var(--success)); }
-.w-bar { height: 5px; border-radius: 3px; background: hsl(var(--secondary)); overflow: hidden; }
-.w-bar > i { display: block; height: 100%; border-radius: 3px; background: hsl(var(--primary)); }
-/* bottom tab bar */
-.w-tabbar { position: fixed; left: 0.875rem; right: 0.875rem; bottom: calc(0.875rem + env(safe-area-inset-bottom)); height: 4.25rem; border-radius: 1.625rem; z-index: 40;
-  background: var(--d-glass); -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
-  box-shadow: 0 0 0 0.5px hsl(var(--border)) inset, 0 10px 30px -14px rgb(0 0 0 / 0.35); display: flex; padding: 0.375rem; max-width: 34rem; margin: 0 auto; }
-.w-tabbar a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 0.6875rem; font-weight: 500; color: hsl(var(--muted-foreground)); border-radius: 1.25rem; }
-.w-tabbar a.on { color: hsl(var(--primary)); font-weight: 600; }
-.w-tabbar svg { font-size: 1.625rem; }
-.w-with-tabs { padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)); }
-.w-act small b { display: inline; font-size: inherit; white-space: nowrap; }
-.w-act small b { color: hsl(var(--destructive)); }
-.w-tabbar-logo { display: none; }
-
-/* ==========================================================================
-   Site (Apple): the result card is a plain white card, Montserrat-free type,
-   and on wide screens the tab bar becomes a left sidebar.
-   ========================================================================== */
-html[data-design='a'] .w-hero { color: hsl(var(--foreground)); }
-html[data-design='a'] .w-hero .opacity-80, html[data-design='a'] .w-hero .opacity-75, html[data-design='a'] .w-hero .opacity-85 { opacity: 1; color: hsl(var(--muted-foreground)); }
-html[data-design='a'] .w-ticks i { background: hsl(var(--secondary)); }
-html[data-design='a'] .w-ticks i.d { background: hsl(var(--primary)); }
-html[data-design='a'] .w-hero .bg-white\/20 { background: hsl(var(--primary) / 0.12); color: hsl(var(--primary)); }
-html[data-design='a'] .w-title { font-weight: 700; letter-spacing: -0.035em; }
-@media (min-width: 900px) {
-  .w-tabbar { left: 0; right: auto; top: 0; bottom: 0; width: 15rem; height: auto; max-width: none; margin: 0; border-radius: 0;
-    flex-direction: column; justify-content: flex-start; gap: 0.25rem; padding: 5rem 0.75rem 1rem;
-    background: hsl(var(--card)); box-shadow: 1px 0 0 hsl(var(--border)); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .w-tabbar-logo { display: block !important; position: absolute; left: 1.375rem; top: 1.6rem; }
-  .w-tabbar a { flex: 0 0 auto; flex-direction: row; justify-content: flex-start; gap: 0.75rem; height: 2.75rem; padding: 0 0.875rem;
-    font-size: 0.9375rem; border-radius: 0.75rem; }
-  .w-tabbar a.on { background: hsl(var(--primary) / 0.08); }
-  .w-tabbar svg { font-size: 1.375rem; }
-  .w-with-tabs { padding-bottom: 3rem; padding-left: 15rem; }
-}
-
-/* Speed: the landing hero no longer animates blur filters or loops forever. */
-html[data-design] .split-word { filter: none !important; animation: none !important; opacity: 1 !important; transform: none !important; }
-html[data-design] .bg-breathe,
-html[data-design] .levitate,
-html[data-design] .animate-float,
-html[data-design] .animate-float-slow,
-html[data-design] .animate-float-rev { animation: none !important; }

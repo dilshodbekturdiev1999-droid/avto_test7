@@ -1,4 +1,3 @@
-import authHero from '@/assets/auth-hero.webp';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -709,28 +708,7 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      <aside className="hidden lg:flex flex-col justify-center px-16 xl:px-20">
-        <div className="max-w-[520px]">
-          <Logo height={28} />
-          <h2 className="w-title text-[2.25rem] text-foreground mt-7 mb-2.5">Имтиҳонни биринчи уринишда топширинг</h2>
-          <p className="text-muted-foreground text-base mb-7">Ҳақиқий имтиҳон саволлари, изоҳ ва хатолар устида ишлаш</p>
-          <div className="w-card-lg p-3.5">
-            <img src={authHero} alt="" className="w-full h-[230px] object-cover rounded-xl" />
-            <p className="font-semibold text-[15px] text-foreground mx-1 mt-3 mb-2.5">Чорраҳани иккинчи бўлиб кесиб ўтади:</p>
-            <div className="flex gap-2">
-              <span className="flex-1 px-3 py-2.5 rounded-lg text-sm font-medium bg-success/10 text-success">Кўк автомобил</span>
-              <span className="flex-1 px-3 py-2.5 rounded-lg text-sm font-medium bg-secondary text-foreground">Қизил автомобил</span>
-            </div>
-          </div>
-          <div className="flex gap-7 mt-6">
-            {[['1300+', 'савол'], ['44', 'мавзу'], ['14', 'имтиҳон маркази']].map(([a, b]) => (
-              <div key={b}><p className="w-num text-2xl font-bold text-foreground">{a}</p><p className="text-[13px] text-muted-foreground">{b}</p></div>
-            ))}
-          </div>
-        </div>
-      </aside>
-      <div className="flex items-center justify-center px-4 py-10 bg-card lg:bg-card relative">
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-background">
       <div className="landing-glow" aria-hidden />
       <span
         aria-hidden
@@ -746,15 +724,15 @@ const AuthPage = () => {
         >
           ← Бош саҳифага
         </Link>
-        <div className="py-2">
-          <div className="mb-7">
-            <div className="mb-8 lg:hidden">
-              <Logo height={26} />
+        <div className="glass-card rounded-3xl p-8">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-5">
+              <Logo height={30} />
             </div>
-            <h1 className="w-title text-[1.875rem] text-foreground mb-1">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-foreground mb-1.5">
               {mode === 'login' ? 'Тизимга кириш' : mode === 'reset' ? 'Паролни тиклаш' : 'Рўйхатдан ўтиш'}
             </h1>
-            <p className="text-muted-foreground">Логин ва паролингизни киритинг</p>
+            <p className="font-mono text-[12px] uppercase tracking-wider text-muted-foreground">ЙҲҚ тестлари платформаси</p>
           </div>
 
           {deviceVerification?.verified ? (
@@ -1037,7 +1015,6 @@ const AuthPage = () => {
             </form>
           )}
         </div>
-      </div>
       </div>
     </div>
   );
