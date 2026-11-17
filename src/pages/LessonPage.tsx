@@ -1,3 +1,4 @@
+import { YAKUNIY_TOPIC_ID } from '@/features/nav/routes';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -75,7 +76,7 @@ const LessonPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {topics?.map((topic, index) => {
             const handleTopicClick = () => {
-              if (topic.id === '1149fe59-ffd0-41f3-ab77-825451215100') {
+              if (topic.id === YAKUNIY_TOPIC_ID) {
                 navigate(`/test/yakuniy/${topic.id}`);
               } else if (hasVideoAccess) {
                 navigate(`/topic/${topic.id}/video`);

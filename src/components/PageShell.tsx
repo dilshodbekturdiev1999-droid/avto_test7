@@ -1,46 +1,48 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import { Logo } from '@/components/landing/Logo';
+import { SIcon } from '@/components/ui/SIcon';
+import { TabBar } from '@/components/TabBar';
 
-// Shared premium shell for interior app pages (profile, leaderboard, …):
-// ambient background + sticky glass header with back button, logo and title.
+// Interior page: small top bar (back + actions) and an iOS-style large title.
+// (The old `icon` prop is accepted but no longer drawn: large titles stand on their own.)
+// `tab` pages are the four main sections: no back button, tab bar at the bottom.
 export function PageShell({
   title,
-  icon,
   onBack,
   actions,
+  tab = false,
   children,
 }: {
   title: string;
   icon?: ReactNode;
   onBack?: () => void;
   actions?: ReactNode;
+  tab?: boolean;
   children: ReactNode;
 }) {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen relative">
-
-      <div className="sticky top-0 z-30 px-3 sm:px-4 pt-3">
-        <div className="max-w-4xl mx-auto glass-strong rounded-2xl px-2.5 sm:px-3 h-14 flex items-center gap-2">
-          <button
-            onClick={onBack ?? (() => navigate('/'))}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors shrink-0"
-            aria-label="Orqaga"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h1 className="font-display font-extrabold tracking-tight text-lg text-foreground flex items-center gap-2 flex-1 min-w-0">
-            {icon}
-            <span className="truncate">{title}</span>
-          </h1>
+    <div className={`min-h-screen relative ${tab ? 'w-with-tabs' : 'pb-10'}`}>
+      <div className="max-w-2xl mx-auto px-4" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+        <div className="h-11 flex items-center gap-2">
+          {!tab && (
+            <button
+              onClick={onBack ?? (() => navigate(-1))}
+              className="-ml-2 h-10 pl-1 pr-3 rounded-full flex items-center gap-1 text-primary font-medium active:bg-foreground/5"
+              aria-label="Orqaga"
+            >
+              <SIcon name="alt-arrow-left" variant="line" className="text-2xl" />
+            </button>
+          )}
+          <div className="flex-1" />
           {actions}
-          <Logo height={22} className="ml-1 opacity-80 hidden sm:block" />
         </div>
+        <h1 className="w-title text-foreground flex items-center gap-2 mt-1 mb-4">
+          <span className="min-w-0">{title}</span>
+        </h1>
+        {children}
       </div>
-
-      <div className="max-w-4xl mx-auto px-4 py-6">{children}</div>
+      {tab && <TabBar />}
     </div>
   );
 }

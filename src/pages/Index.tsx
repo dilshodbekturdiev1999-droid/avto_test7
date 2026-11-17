@@ -1,284 +1,201 @@
-import type { ComponentType } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { useLessons, useAllTopics } from '@/hooks/useSupabase';
-import { LessonCard } from '@/components/LessonCard';
-import { ProgressRing } from '@/components/ProgressRing';
+import { getMistakeIds, getSavedCount, useStudyVersion } from '@/features/study/studyState';
+import { celebrateAllLessonsOnce, celebrateExamDayIfDue, getExamDate } from '@/features/celebrate/celebrate';
+import { useEffect } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SIcon } from '@/components/ui/SIcon';
+import { TabBar } from '@/components/TabBar';
+import { YAKUNIY_PATH } from '@/features/nav/routes';
 import { Logo } from '@/components/landing/Logo';
-import { isLessonUnlocked, getLessonProgress, getTopicProgress, useProgressVersion } from '@/lib/progress';
-import { clearSession, useFullAccess, useAccessInfo } from '@/hooks/useAuth';
+import { useLessons, useAllTopics } from '@/hooks/useSupabase';
+import { getActiveTopic, getTopicProgress, isTopicUnlocked, useProgressVersion } from '@/lib/progress';
+import { useAccessInfo, useFullAccess } from '@/hooks/useAuth';
 import { useFriendsList } from '@/hooks/useFriends';
 import { useDuelList } from '@/hooks/useDuels';
 import { useTestLang } from '@/hooks/useTestLang';
 import { useT } from '@/hooks/useT';
-import { LogOut, User, Trophy, BookOpen, ClipboardX, Layers, Bookmark, Search, MapPin, NotebookText } from 'lucide-react';
-import { getMistakeIds, getSavedCount, useStudyVersion } from '@/features/study/studyState';
-import { celebrateAllLessonsOnce, celebrateExamDayIfDue } from '@/features/celebrate/celebrate';
-import { useEffect } from 'react';
-import { UserCountBadge } from '@/components/UserCountBadge';
 import { AccessExpiryBadge } from '@/components/AccessExpiryBadge';
-import { cn } from '@/lib/utils';
-import { Topic, Lesson } from '@/types/database';
+import { safeStorage } from '@/lib/safeStorage';
+
+const TARIFF_LABELS: Record<string, string> = { standard: 'Стандарт', pro: 'Про', max: 'Макс' };
+
+// Where the green "Continue" tile should go: the topic the student was in the
+// middle of, otherwise the first unfinished topic they are allowed to open.
+function useContinueTarget(): { to: string; label: string | null } {
+  const { data: lessons } = useLessons();
+  const { data: allTopics } = useAllTopics();
+  const fullAccess = useFullAccess();
+  const { trialExpiresAt } = useAccessInfo();
+  useProgressVersion();
+
+  if (!lessons || !allTopics) return { to: '/lessons', label: null };
+
+  const active = getActiveTopic();
+  const activeTopic = active ? allTopics.find((tp) => tp.id === active) : undefined;
+  if (activeTopic && !getTopicProgress(activeTopic.id)?.completed) {
+    return { to: `/test/${activeTopic.id}`, label: activeTopic.title_uz_cyr };
+  }
+
+  const trialExpired = !fullAccess && !!trialExpiresAt && new Date(trialExpiresAt).getTime() < Date.now();
+  for (let i = 0; i < lessons.length; i++) {
+    // Same access rule as the lessons list: trial students only get lesson 1.
+    if (!(fullAccess || (i === 0 && !trialExpired))) continue;
+    const topics = allTopics
+      .filter((tp) => tp.lesson_id === lessons[i].id)
+      .sort((a, b) => a.order_index - b.order_index);
+    const next = topics.find((tp) => !getTopicProgress(tp.id)?.completed && isTopicUnlocked(tp.id, allTopics, lessons));
+    if (next) return { to: `/lesson/${lessons[i].id}`, label: next.title_uz_cyr };
+  }
+  return { to: '/lessons', label: null };
+}
 
 const Index = () => {
   const navigate = useNavigate();
-  useProgressVersion();
-  const { data: lessons, isLoading, isError } = useLessons();
-  const { data: allTopics } = useAllTopics();
   const queryClient = useQueryClient();
+  useProgressVersion();
+  const { isError } = useLessons();
+  const { data: allTopics } = useAllTopics();
   const { data: friendsData } = useFriendsList();
   const { data: duelData } = useDuelList();
-  const friendRequestCount = friendsData?.incoming?.length ?? 0;
-  const duelInviteCount = duelData?.incoming?.length ?? 0;
-  useStudyVersion();
-  const mistakeCount = getMistakeIds().length;
-  const savedCount = getSavedCount();
+  const fullAccess = useFullAccess();
+  const { tariff } = useAccessInfo();
+  const [testLang] = useTestLang();
+  const t = useT();
+  const cont = useContinueTarget();
 
+  const login = safeStorage.getItem('login') ?? '';
+  const avatarUrl = safeStorage.getItem('avatar_url');
   const totalTopics = allTopics?.length ?? 0;
   const completedTopics = allTopics?.filter((tp) => getTopicProgress(tp.id)?.completed).length ?? 0;
-  const overallPct = totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0;
+  const overallPct = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
   useEffect(() => {
     if (totalTopics > 0 && overallPct >= 100) celebrateAllLessonsOnce();
     else celebrateExamDayIfDue();
   }, [overallPct, totalTopics]);
+  const duelInvites = duelData?.incoming?.length ?? 0;
+  useStudyVersion();
+  const mistakeCount = getMistakeIds().length;
+  const savedCount = getSavedCount();
+  const friendRequests = friendsData?.incoming?.length ?? 0;
 
-  // Trial users (not in allowed_phones) only get lesson 1 + the Yakuniy test;
-  // paid/full users get everything. Missing flag = full (existing sessions).
-  // useFullAccess (not a raw localStorage read) so the lesson list re-renders
-  // the moment checkSession() upgrades this student in the background --
-  // otherwise lessons kept showing "call the office" even after the number
-  // was added to allowed_phones, until the student happened to hard-refresh.
-  const fullAccess = useFullAccess();
-  const { trialExpiresAt } = useAccessInfo();
-  const trialExpired = !fullAccess && !!trialExpiresAt && new Date(trialExpiresAt).getTime() < Date.now();
-  const [testLang, setTestLang] = useTestLang();
-  const t = useT();
+  const statusLabel = fullAccess
+    ? tariff
+      ? `${t('Тариф', 'Тариф')} ${TARIFF_LABELS[tariff] ?? tariff}`
+      : t('Тўлиқ доступ', 'Полный доступ')
+    : t('Синов даври', 'Пробный период');
 
-  const handleLogout = () => {
-    clearSession();
-    navigate('/auth');
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">{t('Юкланмоқда...', 'Загрузка...')}</div>
-      </div>
-    );
-  }
-
-  // A failed request used to fall through to the "no lessons found" empty
-  // state below -- which reads as "this account has no content" rather than
-  // "the connection dropped", and left the student with no way forward
-  // short of reloading the whole page.
-  if (isError) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-muted-foreground max-w-sm">
-          {t(
-            'Маълумотларни юклаб бўлмади. Интернет алоқасини текшириб, қайта уриниб кўринг.',
-            'Не удалось загрузить данные. Проверьте интернет и попробуйте ещё раз.'
-          )}
-        </p>
-        <Button onClick={() => queryClient.refetchQueries()} className="rounded-full font-bold">
-          {t('Қайта уриниш', 'Повторить')}
-        </Button>
-      </div>
-    );
-  }
-
+  const examDate = getExamDate();
+  const today = new Date(new Date().toDateString()).getTime();
+  const daysLeft = examDate ? Math.ceil((new Date(examDate + 'T00:00:00').getTime() - today) / 86400000) : null;
+  const examLabel = examDate ? new Date(examDate + 'T00:00:00').toLocaleDateString(testLang === 'ru' ? 'ru-RU' : 'uz-Cyrl-UZ', { day: 'numeric', month: 'short' }) : '';
+  const continueLabel = cont.label ?? t('Тест ечишни бошланг', 'Начните решать тесты');
+  const actions: { icon: string; title: string; sub: ReactNode; to: string }[] = [
+    { icon: 'book-2', title: t('Дарслар', 'Уроки'), sub: `${completedTopics} / ${totalTopics} ${t('мавзу', 'тем')}`, to: '/lessons' },
+    {
+      icon: 'close-square', title: t('Хатоларим', 'Мои ошибки'), to: '/mistakes',
+      sub: mistakeCount > 0 ? <><b className="text-destructive font-semibold">{mistakeCount} {t('та', 'шт.')}</b> · {t('қайта еч', 'перерешать')}</> : t('Ҳозирча йўқ', 'Пока нет'),
+    },
+    { icon: 'shuffle', title: t('1200+ савол', '1200+ вопросов'), sub: t('Аралаш ёки тартиб', 'Вперемешку'), to: '/all-questions' },
+    { icon: 'flag', title: t('Якуний тест', 'Итоговый тест'), sub: t('20 – 200 савол', '20 – 200 вопросов'), to: YAKUNIY_PATH },
+    {
+      icon: 'cup-star', title: t('Турнир', 'Турнир'), to: '/leaderboard',
+      sub: duelInvites > 0 ? <b className="text-destructive font-semibold">{duelInvites} {t('таклиф', 'вызов')}</b> : t('Рақиб билан', 'С соперником'),
+    },
+    { icon: 'signpost-2', title: t('Белгилар', 'Знаки'), sub: t('248 та · изоҳ', '248 · описание'), to: '/foydali-malumotlar' },
+  ];
+  const infoRows = [
+    { icon: 'notes', title: t('Шпаргалкалар', 'Шпаргалки'), val: '9', to: '/cheat-sheets' },
+    { icon: 'map-point', title: t('Имтиҳон марказлари', 'Экзаменационные центры'), val: '14', to: '/exam-centers' },
+    { icon: 'bookmark', title: t('Сақланганлар', 'Сохранённые'), val: String(savedCount), to: '/saved' },
+  ];
   return (
-    <div className="min-h-screen relative">
-      {/* ambient background */}
+    <div className="min-h-screen w-with-tabs">
+      <div className="max-w-2xl mx-auto px-4" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+        <header className="h-12 flex items-center gap-2 mb-1.5">
+          <Logo height={22} />
+          <div className="flex-1" />
+          <button type="button" onClick={() => navigate('/search')} aria-label={t('Қидирув', 'Поиск')} className="w-10 h-10 rounded-full w-card flex items-center justify-center text-foreground w-press">
+            <SIcon name="magnifer" variant="line" className="text-xl" />
+          </button>
+          <button type="button" onClick={() => navigate('/profile')} aria-label={t('Профиль', 'Профиль')} className="relative shrink-0 w-press">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={avatarUrl ?? undefined} />
+              <AvatarFallback className="font-semibold bg-card text-foreground">{login.slice(0, 1).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            {friendRequests > 0 && <Dot />}
+          </button>
+        </header>
 
-      {/* top toolbar */}
-      <div className="sticky top-0 z-30 px-3 sm:px-4 pt-3">
-        <div className="max-w-6xl mx-auto glass-strong rounded-2xl px-3 sm:px-4 h-14 flex items-center justify-between">
-          <Logo height={24} />
-          <div className="flex items-center gap-1.5">
-            <TestLangSwitch lang={testLang} onChange={setTestLang} />
-            <ToolbarButton icon={Trophy} label={t('Турнир', 'Турнир')} badge={duelInviteCount} onClick={() => navigate('/leaderboard')} />
-            <ToolbarButton icon={BookOpen} label={t("Ma'lumotlar", 'Материалы')} onClick={() => navigate('/foydali-malumotlar')} />
-            <ToolbarButton icon={User} label={t('Профиль', 'Профиль')} badge={friendRequestCount} onClick={() => navigate('/profile')} />
-            <ToolbarButton icon={LogOut} label={t('Чиқиш', 'Выход')} onClick={handleLogout} danger />
+        <section className="w-hero px-[18px] pt-3 pb-4">
+          <p className="text-sm opacity-80">{t('Имтиҳонга тайёргарлик', 'Готовность к экзамену')}</p>
+          <div className="flex items-end justify-between mt-0.5 mb-3.5">
+            <p className="w-num text-[3.25rem] font-extrabold leading-none tracking-[-0.045em]">{overallPct}%</p>
+            {daysLeft !== null && daysLeft >= 0 ? (
+              <button type="button" onClick={() => navigate('/profile')} className="text-right pb-1">
+                <span className="block w-num text-[1.375rem] font-bold leading-tight">{daysLeft} {t('кун', 'дн.')}</span>
+                <span className="block text-xs opacity-75">{t('имтиҳонгача', 'до экзамена')} · {examLabel}</span>
+              </button>
+            ) : (
+              <button type="button" onClick={() => navigate('/profile')} className="text-right pb-1 text-xs opacity-85 underline underline-offset-2">
+                {t('Имтиҳон кунини белгиланг', 'Укажите дату экзамена')}
+              </button>
+            )}
           </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 pt-10 pb-16">
-        {/* hero header */}
-        <div className="grid md:grid-cols-[1.4fr_1fr] gap-5 items-stretch mb-10">
-          <div className="reveal reveal-show">
-            <div className="mb-3"><UserCountBadge /></div>
-            <div className="mb-3"><AccessExpiryBadge /></div>
-            <h1 className="font-display font-extrabold tracking-tightest text-[clamp(2rem,5vw,3.25rem)] leading-[1.02] text-foreground mb-3">
-              {t('ЙҲҚ', 'ПДД')} <span className="text-gradient-primary">{t('тестлари', 'тесты')}</span>
-            </h1>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-md">
-              {t(
-                'Дарсни танланг ва тестларни ечишни бошланг. Ҳар бир мавзу — мнемоника усулида.',
-                'Выберите урок и начните решать тесты. Каждая тема — по методу мнемоники.'
-              )}
-            </p>
+          <div className="w-ticks" role="progressbar" aria-valuenow={overallPct} aria-valuemin={0} aria-valuemax={100}>
+            {Array.from({ length: Math.max(totalTopics, 1) }, (_, k) => <i key={k} className={k < completedTopics ? 'd' : ''} />)}
           </div>
-
-          {/* overall progress card */}
-          <div className="reveal reveal-show glass-card rounded-3xl p-5 flex items-center gap-5" style={{ animationDelay: '80ms' }}>
-            <ProgressRing value={overallPct} size={92} stroke={7} tone={overallPct >= 100 ? 'success' : 'primary'}>
-              <div className="text-center">
-                <p className="text-xl font-black tabular-nums text-foreground leading-none">{Math.round(overallPct)}%</p>
-              </div>
-            </ProgressRing>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">{t('Умумий прогресс', 'Общий прогресс')}</p>
-              <p className="text-2xl font-black text-foreground tabular-nums leading-none font-display">
-                {completedTopics}<span className="text-muted-foreground text-lg">/{totalTopics}</span>
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">{t('мавзу тугатилган', 'тем завершено')}</p>
-            </div>
+          <div className="flex justify-between text-xs opacity-80 mt-2 w-num">
+            <span>{completedTopics} / {totalTopics} {t('мавзу', 'тем')}</span>
+            <span>{statusLabel}</span>
           </div>
-        </div>
+        </section>
 
-        {/* study tools */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
-          {[
-            { to: '/mistakes', icon: ClipboardX, label: 'Mening Xatolarim', badge: mistakeCount },
-            { to: '/all-questions', icon: Layers, label: '1200+ savollar', badge: 0 },
-            { to: '/saved', icon: Bookmark, label: 'Saqlanganlar', badge: savedCount },
-            { to: '/search', icon: Search, label: 'Qidiruv', badge: 0 },
-            { to: '/cheat-sheets', icon: NotebookText, label: 'Shpargalkalar', badge: 0 },
-            { to: '/exam-centers', icon: MapPin, label: 'Imtihon markazlari', badge: 0 },
-          ].map(({ to, icon: Icon, label, badge }) => (
-            <button
-              key={to}
-              type="button"
-              onClick={() => navigate(to)}
-              className="relative glass-card rounded-2xl p-4 text-left flex flex-col gap-3 hover:border-primary/40 transition-colors"
-            >
-              <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Icon className="w-5 h-5" /></span>
-              <span className="font-display font-bold text-sm text-foreground leading-tight">{label}</span>
-              {badge > 0 && (
-                <span className="absolute top-3 right-3 flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">{badge}</span>
-              )}
+        <button type="button" onClick={() => navigate(cont.to)} className="w-card-lg w-press mt-3 w-full flex items-center gap-3 px-4 py-3.5 text-left">
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-medium text-muted-foreground">{t('Давом этиш', 'Продолжить')}</span>
+            <span className="block w-h2 text-lg text-foreground truncate">{continueLabel}</span>
+          </span>
+          <span className="w-[3.25rem] h-[3.25rem] rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-[0_8px_18px_-10px_hsl(var(--primary))]">
+            <SIcon name="play" variant="bold" className="text-[1.375rem]" />
+          </span>
+        </button>
+        <div className="mt-2"><AccessExpiryBadge /></div>
+
+        <div className="w-acts mt-1">
+          {actions.map((a) => (
+            <button key={a.title} type="button" onClick={() => navigate(a.to)} className="w-act">
+              <SIcon name={a.icon} className="w-icon text-[2rem]" />
+              <span className="min-w-0 flex-1"><b>{a.title}</b><small>{a.sub}</small></span>
             </button>
           ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {lessons?.map((lesson, index) => (
-            <LessonCardWithProgress
-              key={lesson.id}
-              lessonId={lesson.id}
-              title={lesson.title}
-              index={index}
-              fullAccess={fullAccess}
-              trialExpired={trialExpired}
-              allTopics={allTopics || []}
-              allLessons={lessons || []}
-              onClick={() => navigate(`/lesson/${lesson.id}`)}
-            />
+        <div className="w-sec"><b>{t('Маълумот', 'Справка')}</b></div>
+        <div className="w-list">
+          {infoRows.map((r) => (
+            <button key={r.to} type="button" onClick={() => navigate(r.to)} className="w-row">
+              <SIcon name={r.icon} className="w-icon text-[1.6rem]" />
+              <span className="flex-1 font-semibold text-[15px] text-foreground">{r.title}</span>
+              <span className="text-sm text-muted-foreground w-num">{r.val}</span>
+              <SIcon name="alt-arrow-right" variant="line" className="text-muted-foreground/60" />
+            </button>
           ))}
         </div>
-        {(!lessons || lessons.length === 0) && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">{t('Дарслар топилмади', 'Уроки не найдены')}</p>
-          </div>
+        {isError && (
+          <button type="button" onClick={() => queryClient.refetchQueries()} className="mt-4 w-full text-sm text-primary font-medium">
+            {t('Маълумотларни қайта юклаш', 'Загрузить данные заново')}
+          </button>
         )}
       </div>
+      <TabBar />
     </div>
   );
 };
 
-function TestLangSwitch({ lang, onChange }: { lang: 'uz' | 'ru'; onChange: (l: 'uz' | 'ru') => void }) {
-  return (
-    <div className="flex items-center rounded-full bg-foreground/5 p-0.5 mr-1">
-      {(['uz', 'ru'] as const).map((l) => (
-        <button
-          key={l}
-          onClick={() => onChange(l)}
-          className={cn(
-            'px-2.5 h-8 rounded-full text-xs font-bold uppercase transition-colors',
-            lang === l ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          {l}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function ToolbarButton({
-  icon: Icon,
-  label,
-  badge = 0,
-  onClick,
-  danger,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  badge?: number;
-  onClick: () => void;
-  danger?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'relative inline-flex items-center gap-2 rounded-full px-3 h-9 text-sm font-semibold transition-colors',
-        'text-muted-foreground hover:text-foreground hover:bg-foreground/5',
-        danger && 'hover:text-destructive',
-      )}
-    >
-      <Icon className="w-4 h-4" />
-      <span className="hidden sm:inline">{label}</span>
-      {badge > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
-          {badge}
-        </span>
-      )}
-    </button>
-  );
-}
-
-function LessonCardWithProgress({
-  lessonId,
-  title,
-  index,
-  fullAccess,
-  trialExpired,
-  allTopics,
-  allLessons,
-  onClick,
-}: {
-  lessonId: string;
-  title: string;
-  index: number;
-  fullAccess: boolean;
-  trialExpired: boolean;
-  allTopics: Topic[];
-  allLessons: Lesson[];
-  onClick: () => void;
-}) {
-  // One all-topics list instead of a server call per lesson card.
-  const topicCount = allTopics.filter((tp) => tp.lesson_id === lessonId).length;
-  // Trial gate: only lesson 1 (index 0) is open to everyone, and only while
-  // the 7-day trial window hasn't run out; everything else, including the
-  // Yakuniy (final test) lesson, needs full (paid) access.
-  const isUnlocked = (fullAccess || (index === 0 && !trialExpired)) && isLessonUnlocked(lessonId, allTopics, allLessons);
-  const lessonProgress = getLessonProgress(lessonId, allTopics);
-
-  return (
-    <LessonCard
-      title={title}
-      topicCount={topicCount}
-      completedCount={lessonProgress.completed}
-      index={index}
-      isUnlocked={isUnlocked}
-      onClick={onClick}
-    />
-  );
+function Dot() {
+  return <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-destructive border-2 border-background" />;
 }
 
 export default Index;
