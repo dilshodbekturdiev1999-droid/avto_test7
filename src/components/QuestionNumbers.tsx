@@ -49,7 +49,7 @@ export function QuestionNumbers({ questions, currentIndex, answers, onSelect }: 
           state = selected && isAnswerCorrect(selected.is_correct) ? 'correct' : 'wrong';
         }
 
-        const base = 'w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold border transition-all shrink-0';
+        const base = 'qn-item w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold border transition-all shrink-0';
         const styles =
           state === 'correct'
             ? 'bg-success text-success-foreground border-success'
@@ -63,6 +63,7 @@ export function QuestionNumbers({ questions, currentIndex, answers, onSelect }: 
             key={q.id}
             type="button"
             onClick={() => onSelect?.(i)}
+            data-state={state}
             className={cn(base, styles, ring, onSelect && 'cursor-pointer')}
             aria-label={`${t('Савол', 'Вопрос')} ${i + 1}`}
             aria-current={isCurrent ? 'step' : undefined}

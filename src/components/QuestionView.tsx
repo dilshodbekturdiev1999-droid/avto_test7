@@ -55,9 +55,9 @@ export function QuestionView({ question, selectedAnswer, onSelectAnswer, headerA
   }, [selectedAnswer, question.answers, onSelectAnswer]);
 
   return (
-    <div className="bg-card rounded-2xl border border-border overflow-hidden animate-scale-in">
+    <div className="qv-root bg-card rounded-2xl border border-border overflow-hidden animate-scale-in">
       {/* Question text */}
-      <div className="flex items-start gap-3 border-b border-border p-4 sm:p-6 short:p-3">
+      <div className="qv-head flex items-start gap-3 border-b border-border p-4 sm:p-6 short:p-3">
         <h2 className="flex-1 text-lg font-semibold leading-snug text-foreground sm:text-xl sm:leading-relaxed short:text-base">
           {question.question_uz_cyr}
         </h2>
@@ -65,7 +65,7 @@ export function QuestionView({ question, selectedAnswer, onSelectAnswer, headerA
       </div>
 
       {/* Content: Image + Answers */}
-      <div className="flex flex-col lg:flex-row short:flex-row">
+      <div className="qv-body flex flex-col lg:flex-row short:flex-row">
         {/* Image - always shown, either question image or logo */}
         <div className="p-3 sm:p-4 lg:w-3/5 short:w-1/2 short:p-2">
           {imageUrl ? (
@@ -103,7 +103,7 @@ export function QuestionView({ question, selectedAnswer, onSelectAnswer, headerA
         </div>
 
         {/* Answers */}
-        <div className="flex-1 space-y-2 p-3 sm:space-y-3 sm:p-4 short:p-2">
+        <div className="qv-answers flex-1 space-y-2 p-3 sm:space-y-3 sm:p-4 short:p-2">
           {question.answers.map((answer, idx) => {
             const isSelected = selectedAnswer === answer.id;
             const isCorrect = isAnswerCorrect(answer.is_correct);
@@ -128,17 +128,18 @@ export function QuestionView({ question, selectedAnswer, onSelectAnswer, headerA
             return (
               <button
                 key={answer.id}
+                data-state={selectedAnswer === null ? 'idle' : isCorrect ? 'correct' : isSelected ? 'wrong' : 'dim'}
                 onClick={() => onSelectAnswer(answer.id)}
                 disabled={selectedAnswer !== null}
                 className={cn(
-                  "w-full flex items-center gap-3 p-3 sm:gap-4 sm:p-4 rounded-xl border-2 transition-all duration-200 text-left",
+                  "qv-answer w-full flex items-center gap-3 p-3 sm:gap-4 sm:p-4 rounded-xl border-2 transition-all duration-200 text-left",
                   buttonStyle,
                   selectedAnswer === null && "hover:scale-[1.01]",
                   selectedAnswer !== null && !isSelected && !isCorrect && "opacity-60"
                 )}
               >
                 <span className={cn(
-                  "w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0",
+                  "qv-key w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0",
                   labelStyle
                 )}>
                   {ANSWER_LABELS[idx] || `F${idx + 1}`}

@@ -1,0 +1,214 @@
+/* ==========================================================================
+   Prava On design "Sokin": tinted neutrals, soft surfaces, deep blue.
+   Applied through <html data-design="c"> (set in index.html before paint).
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600&display=swap');
+
+/* ---------- C · Sokin ---------- */
+html[data-design='c'] {
+  --background: 216 25% 96%;
+  --foreground: 222 30% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 30% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 30% 15%;
+  --primary: 228 69% 47%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 216 28% 93%;
+  --secondary-foreground: 222 30% 17%;
+  --muted: 216 28% 93%;
+  --muted-foreground: 219 13% 42%;
+  --accent: 228 69% 47%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 356 66% 50%;
+  --success: 162 58% 34%;
+  --warning: 36 90% 46%;
+  --border: 216 28% 89%;
+  --input: 216 26% 85%;
+  --ring: 228 69% 47%;
+  --radius: 0.875rem;
+  --d-font: 'Geologica', system-ui, sans-serif;
+  --d-num: 'Geologica', system-ui, sans-serif;
+  --d-shadow: 0 1px 2px hsl(222 40% 20% / 0.05), 0 8px 24px -12px hsl(222 40% 20% / 0.12);
+  --d-band: 0 0% 100%;
+  --d-band-fg: 222 30% 15%;
+}
+html[data-design='c'].dark {
+  --background: 222 22% 9%;
+  --foreground: 220 23% 92%;
+  --card: 222 20% 13%;
+  --card-foreground: 220 23% 92%;
+  --popover: 222 20% 13%;
+  --popover-foreground: 220 23% 92%;
+  --primary: 227 100% 74%;
+  --primary-foreground: 225 35% 10%;
+  --secondary: 222 20% 17%;
+  --secondary-foreground: 220 23% 92%;
+  --muted: 222 20% 16%;
+  --muted-foreground: 220 12% 64%;
+  --accent: 227 100% 74%;
+  --success: 160 50% 48%;
+  --destructive: 356 72% 64%;
+  --border: 222 18% 20%;
+  --input: 222 18% 24%;
+  --ring: 227 100% 74%;
+  --d-shadow: 0 1px 2px hsl(0 0% 0% / 0.3), 0 10px 28px -14px hsl(0 0% 0% / 0.55);
+  --d-band: 222 20% 13%;
+  --d-band-fg: 220 23% 92%;
+}
+
+/* ==========================================================================
+   Shared rules for every variant: one face, flat surfaces, no glow, no game.
+   ========================================================================== */
+html[data-design] body,
+html[data-design] .font-display,
+html[data-design] .font-sans {
+  font-family: var(--d-font);
+}
+html[data-design] .font-display { letter-spacing: -0.02em; }
+html[data-design] .font-mono,
+html[data-design] .mono,
+html[data-design] .label-mono,
+html[data-design] .tabular-nums { font-family: var(--d-num); }
+html[data-design] .font-black,
+html[data-design] .font-extrabold { font-weight: 600; }
+
+/* surfaces */
+html[data-design] .glass,
+html[data-design] .glass-strong,
+html[data-design] .float-card {
+  background: hsl(var(--card));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid hsl(var(--border));
+}
+html[data-design] .glass-card,
+html[data-design].dark .glass-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--d-shadow);
+}
+html[data-design] .rounded-2xl,
+html[data-design] .rounded-3xl,
+html[data-design] .rounded-\[2rem\] { border-radius: calc(var(--radius) + 4px); }
+html[data-design] .rounded-xl { border-radius: var(--radius); }
+
+/* no glow, no ambient blobs, no giant decorative numerals */
+html[data-design] .landing-glow,
+html[data-design] .aurora::before,
+html[data-design] .grid-bg,
+html[data-design] .blur-3xl,
+html[data-design] .auth-numeral { display: none !important; }
+html[data-design] .glow-primary,
+html[data-design] .glow-soft,
+html[data-design] .ring-accent { box-shadow: none; }
+html[data-design] .text-gradient,
+html[data-design] .text-gradient-primary { color: hsl(var(--primary)); }
+
+/* calm motion: things appear, they do not fly in through a blur */
+html[data-design] .reveal { opacity: 1; transform: none; filter: none; }
+html[data-design] .reveal-show { animation: d-fade 0.24s ease-out both; }
+html[data-design] .page-enter { animation: d-fade 0.16s ease-out both; }
+html[data-design] .animate-scale-in { animation: d-fade 0.18s ease-out both; }
+html[data-design] .card-hover:hover { transform: none; border-color: hsl(var(--foreground) / 0.25); }
+@keyframes d-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* buttons: solid, flat */
+html[data-design] .cta-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  box-shadow: none;
+  border-radius: var(--radius) !important;
+  transition: background-color 0.15s ease;
+}
+html[data-design] .cta-primary:hover { transform: none; box-shadow: none; background: hsl(var(--primary) / 0.9); }
+html[data-design] .btn-3d,
+html[data-design] .btn-3d:active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  box-shadow: none;
+  transform: none;
+  border-radius: var(--radius);
+}
+html[data-design] .btn-3d-ghost { box-shadow: none; transform: none; border-radius: var(--radius); }
+
+/* the old 3D tiles become plain surfaces */
+html[data-design] .tile {
+  border-radius: calc(var(--radius) + 2px);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+html[data-design] .tile:active { transform: none; }
+html[data-design] .tile-plain,
+html[data-design] .tile-solid {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--d-shadow);
+}
+html[data-design] .tile-solid:active { transform: none; box-shadow: var(--d-shadow); }
+html[data-design] .tile-solid.tile-blue,
+html[data-design] .tile-solid.tile-green { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: transparent; }
+
+/* ==========================================================================
+   Question screen
+   ========================================================================== */
+html[data-design] .qv-root { border-radius: calc(var(--radius) + 2px); box-shadow: var(--d-shadow); }
+html[data-design] .qv-answer { border-width: 1px; border-radius: var(--radius); }
+html[data-design] .qv-answer:hover { transform: none !important; }
+html[data-design] .qn-item { border-radius: var(--radius); }
+html[data-design] .qn-item[aria-current='step'] { --tw-ring-offset-width: 0px; }
+
+
+
+/* C: soft surfaces, filled answer pills */
+html[data-design='c'] .qv-root { border-color: transparent; }
+html[data-design='c'] .qv-head { border-bottom-color: hsl(var(--border) / 0.6); }
+html[data-design='c'] .qv-answer[data-state='idle'], html[data-design='c'] .qv-answer[data-state='dim'] { background: hsl(var(--secondary)); border-color: transparent; }
+html[data-design='c'] .qv-key { border-radius: calc(var(--radius) - 4px); }
+html[data-design='c'] .qv-answer[data-state='idle'] .qv-key, html[data-design='c'] .qv-answer[data-state='dim'] .qv-key { background: hsl(var(--card)); color: hsl(var(--foreground)); }
+html[data-design='c'] .qn-item[data-state='idle'] { border-color: transparent; }
+
+/* ==========================================================================
+   Home hub (rendered by HomeHub when a variant is active)
+   ========================================================================== */
+.hub-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+.hub-grid { display: grid; gap: 0.625rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hub-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  text-align: left;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: var(--d-shadow);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.hub-item:hover { border-color: hsl(var(--foreground) / 0.25); }
+.hub-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 2.25rem; height: 2.25rem;
+  border-radius: var(--radius);
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+.hub-chevron { display: none; }
+
+
+
+/* C: soft cards */
+html[data-design='c'] .hub-item { border-color: transparent; }
+html[data-design='c'] .hub-icon { background: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); border-radius: calc(var(--radius) - 2px); }
+
+html[data-design] .qv-answer[data-state='correct'] { background: hsl(var(--success) / 0.12); border-color: hsl(var(--success)); }
+html[data-design] .qv-answer[data-state='wrong'] { background: hsl(var(--destructive) / 0.1); border-color: hsl(var(--destructive)); }
+html[data-design] .qv-answer[data-state='correct'] .qv-key { background: hsl(var(--success)); color: #fff; }
+html[data-design] .qv-answer[data-state='wrong'] .qv-key { background: hsl(var(--destructive)); color: #fff; }

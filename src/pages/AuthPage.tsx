@@ -712,7 +712,7 @@ const AuthPage = () => {
       <div className="landing-glow" aria-hidden />
       <span
         aria-hidden
-        className="font-display pointer-events-none select-none absolute -z-10 leading-none"
+        className="auth-numeral font-display pointer-events-none select-none absolute -z-10 leading-none"
         style={{ right: '-4%', bottom: '-8%', fontSize: 'clamp(220px, 40vw, 520px)', color: 'rgba(37,93,255,0.05)', letterSpacing: '-0.06em' }}
       >
         7
