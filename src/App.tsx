@@ -18,6 +18,7 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
 const DuelPage = lazy(() => import("./pages/DuelPage"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const AvtodromPage = lazy(() => import("./game/AvtodromPage"));
 const FoydaliMalumotlarPage = lazy(() => import("./pages/FoydaliMalumotlarPage"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const MistakesPage = lazy(() => import("./pages/MistakesPage"));
@@ -184,6 +185,7 @@ const App = () => (
           <Route path="/exam-centers" element={<ProtectedRoute><ExamCentersPage /></ProtectedRoute>} />
           <Route path="/cheat-sheets" element={<ProtectedRoute><CheatSheetsPage /></ProtectedRoute>} />
           <Route path="/cheat-sheets/:sheetId" element={<ProtectedRoute><CheatSheetsPage /></ProtectedRoute>} />
+          <Route path="/avtodrom" element={<ProtectedRoute><AvtodromPage /></ProtectedRoute>} />
           <Route path="/foydali-malumotlar" element={
             <ProtectedRoute>
               <FoydaliMalumotlarPage />

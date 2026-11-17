@@ -51,6 +51,14 @@ const PracticePage = () => {
               <SIcon name="alt-arrow-right" variant="line" className="chev" />
             </button>
           </div>
+          <div className="sa-sec">{t('Амалий имтиҳон', 'Практический экзамен')}</div>
+          <div className="sa-group">
+            <button type="button" className="sa-li" onClick={() => navigate('/avtodrom')}>
+              <SIcon name="wheel" variant="line" />
+              <div className="tx"><b>{t('Автодром', 'Автодром')}</b><small>{t('B ва C тоифа · жарима баллари билан', 'Категории B и C · со штрафными баллами')}</small></div>
+              <SIcon name="alt-arrow-right" variant="line" className="chev" />
+            </button>
+          </div>
         </div>
       </div>
     </SiteShell>
