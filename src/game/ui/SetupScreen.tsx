@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useT } from '@/hooks/useT';
 import { VEHICLES, type Category } from '../engine/vehicles';
 import { preloadGame } from '../engine/preload';
+import HandPicker, { loadHand } from './HandPicker';
 
 export type GameMode = 'exam' | 'free';
 
@@ -34,6 +35,7 @@ export default function SetupScreen({ initial, onStart, onBack }: { initial: Gam
   const [vehicleId, setVehicleId] = useState(initial?.vehicleId ?? VEHICLES[0].id);
   const [color, setColor] = useState<number | null>(initial?.color ?? VEHICLES[0].defaultColor);
   const [mode, setMode] = useState<GameMode>(initial?.mode ?? 'exam');
+  const [hand, setHand] = useState(loadHand);
   const cars = VEHICLES.filter((v) => v.category === category);
   const car = cars.find((v) => v.id === vehicleId) ?? cars[0];
   // car pictures first (tiny), then the game files while the player is still choosing
@@ -91,6 +93,9 @@ export default function SetupScreen({ initial, onStart, onBack }: { initial: Gam
                 <div className="mt-0.5 text-xs text-slate-500">{t('Жаримасиз, машқларни бемалол ўрганинг', 'Без штрафов, тренируйтесь спокойно')}</div>
               </button>
             </div>
+
+            <p className="mb-2 mt-5 text-[13px] font-medium text-slate-500">{t('Бошқарув', 'Управление')}</p>
+            <HandPicker value={hand} onChange={setHand} />
           </div>
 
           <div>

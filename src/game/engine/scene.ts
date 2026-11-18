@@ -343,6 +343,14 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
       }
       // matte facades: windows glow softly from inside, no sky mirror
       m.envMapIntensity = /Glass|Logo|Sign/.test(m.name) ? 0.15 : 0.5;
+      // layers laid on top of something (windows on walls, paths on the lawn) win the depth test
+      // at any distance instead of flickering with what is under them
+      const layer = /Glass|Logo|Sign$/.test(m.name) ? 2 : /Zebra|White/.test(m.name) ? 3 : /Paving|Plaza|Road|Flowers/.test(m.name) ? 1 : 0;
+      if (layer) {
+        m.polygonOffset = true;
+        m.polygonOffsetFactor = -layer;
+        m.polygonOffsetUnits = -2 * layer;
+      }
     });
     scene.add(campus);
   }
@@ -412,7 +420,9 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
         // headlamps keep their own pattern (projector, LED strip); the rest glow over the whole lens
         m.emissiveMap = kind === 'head' ? m.map : null;
         m.emissiveIntensity = 0;
-        m.toneMapped = false; // a lit lamp stays saturated in daylight
+        // a lit tail / indicator stays saturated in daylight; headlamps keep the normal tone
+        // (a flat white lens would otherwise turn into a pure white block)
+        m.toneMapped = kind === 'head';
         m.needsUpdate = true;
       }
       lampMeshes.push({ mesh, kind });
@@ -431,9 +441,12 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
     }
     if (m.name === 'Paint') {
       if (!paint.includes(m)) {
-        m.clearcoat = 1;
-        m.clearcoatRoughness = 0.05;
-        m.envMapIntensity = 1.2;
+        // satin factory paint: a soft clear coat, not a wet mirror
+        m.metalness = Math.min(m.metalness, 0.25);
+        m.roughness = Math.max(m.roughness, 0.38);
+        m.clearcoat = 0.3;
+        m.clearcoatRoughness = 0.3;
+        m.envMapIntensity = 0.6;
         paint.push(m);
       }
     }
@@ -442,12 +455,13 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
       m.transparent = true;
       m.opacity = 0.8;
       m.depthWrite = false;
-      m.envMapIntensity = 1.6;
-      m.roughness = 0.03;
+      m.envMapIntensity = 0.85;
+      m.roughness = 0.08;
       mesh.renderOrder = 2;
       mesh.castShadow = false;
     }
-    if (m.name === 'Chrome' || m.name === 'Rim') m.envMapIntensity = 1.4;
+    if (m.name === 'Chrome' || m.name === 'Rim') m.envMapIntensity = 0.9;
+    else if (m.name !== 'Glass' && m.name !== 'Paint' && m.envMapIntensity > 0.8) m.envMapIntensity = 0.8;
   });
   carRoot.add(model);
   const wheels = ['fl', 'fr', 'rl', 'rr'].map((k) => {
@@ -574,7 +588,9 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
         const blink = Math.floor(l.time * 3) % 2 === 0; // 1.5 Hz, in step with the relay click
         const left = (l.signal === -1 || l.signal === 2) && blink;
         const right = (l.signal === 1 || l.signal === 2) && blink;
-        lampLevel.head = l.engine ? 1.6 : 0;
+        // daytime lights: the lens pattern stays readable (the truck's lamps are flat white panels
+        // in the model, so they only get a faint glow; the halo sprite does the rest)
+        lampLevel.head = l.engine ? (profile.category === 'C' ? 0.08 : 0.55) : 0;
         lampLevel.tail = l.brake ? 4.0 : l.engine ? 0.3 : 0;
         lampLevel.reverse = l.reverse && l.engine ? 2.6 : 0;
         lampLevel.indL = left ? 3.4 : 0;

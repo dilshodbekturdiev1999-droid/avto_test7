@@ -45,6 +45,26 @@ export interface GameAssets {
 
 const BASE = `${import.meta.env.BASE_URL}game/`;
 
+/** Clear blue sky, no clouds: deep blue overhead fading to the pale haze of the fog at the horizon. */
+function clearSky(): THREE.Texture {
+  const c = document.createElement('canvas');
+  c.width = 4;
+  c.height = 512;
+  const g = c.getContext('2d')!;
+  // equirect: row 0 = straight up, row 256 = horizon
+  const grad = g.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0, '#3f7fd6');
+  grad.addColorStop(0.22, '#5b95e0');
+  grad.addColorStop(0.4, '#8db6ea');
+  grad.addColorStop(0.49, '#b9d0ec');
+  grad.addColorStop(1, '#b9d0ec');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 4, 512);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export async function loadGameAssets(
   onProgress: (p: number) => void,
   lowCar = false,
@@ -88,7 +108,7 @@ export async function loadGameAssets(
     const hdrUrl = await blobUrl('env/sky_1k.hdr', 'application/octet-stream');
     const [env, bg, info, skid] = await Promise.all([
       new RGBELoader().loadAsync(hdrUrl).finally(() => URL.revokeObjectURL(hdrUrl)),
-      texture('env/sky_bg.jpg', 'image/jpeg'),
+      clearSky(),
       json<{ sun: [number, number, number] }>('env/sky.json'),
       texture('textures/skid.png', 'image/png'),
     ]);

@@ -6,7 +6,7 @@
 /** Bump when anything in public/game changes, so devices fetch the new files. */
 import { ASSETS_LOCAL } from './platform';
 
-export const GAME_VERSION = '2026-11-19b';
+export const GAME_VERSION = '2026-11-20a';
 const CACHE = `avtodrom-${GAME_VERSION}`;
 const BASE = `${import.meta.env.BASE_URL}game/`;
 
@@ -98,7 +98,6 @@ export function gameFileList(carFile: string, carHasLow: boolean) {
     'trees/trees.json',
     ...TREE_FILES,
     'env/sky_1k.hdr',
-    'env/sky_bg.jpg',
     'env/sky.json',
     'textures/skid.png',
     'textures/detail_asphalt.jpg',

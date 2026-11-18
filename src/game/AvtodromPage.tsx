@@ -18,6 +18,21 @@ export default function AvtodromPage() {
   const [run, setRun] = useState(0);
   const exit = () => navigate(-1);
 
+  // Draw edge to edge on phones with a notch (iPhone landscape): without viewport-fit=cover
+  // Safari leaves empty bars at the sides. Only while the game is open; restored on leave.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="viewport"]');
+    const before = meta?.getAttribute('content') ?? null;
+    if (meta && before && !/viewport-fit=cover/.test(before)) meta.setAttribute('content', `${before}, viewport-fit=cover`);
+    const html = document.documentElement;
+    const bg = html.style.backgroundColor;
+    html.style.backgroundColor = '#dfe7f1';
+    return () => {
+      if (meta && before !== null) meta.setAttribute('content', before);
+      html.style.backgroundColor = bg;
+    };
+  }, []);
+
   useEffect(() => {
     void loadGameView().then(() => import('./engine/physics')).then((m) => m.initRapier());
   }, []);

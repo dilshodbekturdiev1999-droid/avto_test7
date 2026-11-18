@@ -16,6 +16,7 @@ import { VEHICLES, withRig } from './engine/vehicles';
 import { gameFile, lowDevice } from './engine/preload';
 import ResultScreen from './ui/ResultScreen';
 import { COLORS, type GameSetup } from './ui/SetupScreen';
+import HandPicker, { loadHand } from './ui/HandPicker';
 
 type CamMode = 'chase' | 'cockpit' | 'top';
 
@@ -73,6 +74,10 @@ export default function GameView({
   const [gear, setGearState] = useState<Gear>(exam ? 'N' : '1');
   const [cam, setCam] = useState<CamMode>('chase');
   const [menu, setMenu] = useState(false);
+  // which side the wheel is on (left- / right-handed); gears and pedals take the other side
+  const [hand, setHand] = useState(loadHand);
+  const wheelSide = hand === 'left' ? 'left' : 'right';
+  const padSide = hand === 'left' ? 'right' : 'left';
   const [finished, setFinished] = useState(false);
   const [result, setResult] = useState<{ total: number; list: Penalty[]; reason: 'finish' | 'fail' } | null>(null);
   const [colorHex, setColorHex] = useState<number | null>(setup.color);
@@ -88,6 +93,8 @@ export default function GameView({
   const touch = useRef(isTouchDevice()).current;
   const [portrait, setPortrait] = useState(() => window.innerHeight > window.innerWidth);
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
+  // the one-row button strip (~330 px) meets the gear selector below ~960 px width
+  const narrow = vp.w < 960;
   const wheelSvgRef = useRef<SVGSVGElement>(null);
   const speedRef = useRef<HTMLDivElement>(null);
   const arcRef = useRef<SVGCircleElement>(null);
@@ -911,7 +918,7 @@ export default function GameView({
             onPointerUp={onWheelUp}
             onPointerCancel={onWheelUp}
             className="absolute bottom-3 h-[146px] w-[146px]"
-            style={{ left: 'max(1rem, env(safe-area-inset-left))', marginBottom: 'env(safe-area-inset-bottom)', touchAction: 'none' }}
+            style={{ [wheelSide]: `max(1rem, env(safe-area-inset-${wheelSide}))`, marginBottom: 'env(safe-area-inset-bottom)', touchAction: 'none' }}
           >
             <svg ref={wheelSvgRef} viewBox="0 0 100 100" className="h-full w-full drop-shadow-[0_4px_10px_rgba(15,23,42,0.35)]">
               <circle cx="50" cy="50" r="43" fill="none" stroke="#1e293b" strokeWidth="9" />
@@ -925,7 +932,8 @@ export default function GameView({
           </div>
 
           {/* Car controls (belt, engine, parking brake) above the light switches */}
-          <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5" style={{ bottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
+          {/* narrow phones (iPhone in landscape): two rows, so the gear selector never covers them */}
+          <div className={`absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5 ${narrow ? 'flex-col' : ''}`} style={{ bottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
             <div className="flex gap-1.5">
               {([
                 { key: 'belt', on: belt, icon: <BeltIcon className="h-5 w-5" />, act: () => setBelt((v) => !v), label: 'Kamar', kind: 'blue' as const },
@@ -937,7 +945,7 @@ export default function GameView({
                 </button>
               ))}
             </div>
-            <div className="mx-0.5 h-7 w-px bg-white/70" />
+            {!narrow && <div className="mx-0.5 h-7 w-px bg-white/70" />}
             <div className="flex gap-1.5">
               {([
                 { key: 'mirrors', on: mirrors, icon: <FlipHorizontal2 className="h-5 w-5" />, act: () => setMirrors((v) => !v), label: "Ko'zgu", kind: 'blue' as const },
@@ -953,7 +961,7 @@ export default function GameView({
           </div>
 
           {/* Gear selector */}
-          <div className={`absolute bottom-4 flex flex-col gap-1 rounded-2xl p-1.5 ${panel}`} style={{ right: 'calc(max(1rem, env(safe-area-inset-right)) + 176px)', marginBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className={`absolute bottom-4 flex flex-col gap-1 rounded-2xl p-1.5 ${panel}`} style={{ [padSide]: `calc(max(1rem, env(safe-area-inset-${padSide})) + 176px)`, marginBottom: 'env(safe-area-inset-bottom)' }}>
             {(['R', 'N', '1', '2'] as Gear[]).map((g) => (
               <button
                 key={g}
@@ -967,7 +975,7 @@ export default function GameView({
           </div>
 
           {/* Pedals */}
-          <div className="absolute bottom-3 flex items-end gap-3" style={{ right: 'max(1rem, env(safe-area-inset-right))', marginBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className={`absolute bottom-3 flex items-end gap-3 ${hand === 'right' ? 'flex-row-reverse' : ''}`} style={{ [padSide]: `max(1rem, env(safe-area-inset-${padSide}))`, marginBottom: 'env(safe-area-inset-bottom)' }}>
             <div {...pedal('brake')} className="group flex flex-col items-center" style={{ touchAction: 'none' }}>
               <div className={`flex h-[78px] w-[84px] flex-col justify-evenly rounded-2xl px-3 transition-transform group-active:scale-95 ${panel}`}>
                 {[0, 1, 2, 3].map((i) => <div key={i} className="h-1.5 rounded-full bg-slate-300 group-active:bg-red-400" />)}
@@ -1031,6 +1039,10 @@ export default function GameView({
                 <RotateCcw className="h-4 w-4" />
                 {t('Қайта бошлаш', 'Заново')}
               </button>
+            </div>
+            <p className="mb-2 text-sm text-slate-500">{t('Бошқарув', 'Управление')}</p>
+            <div className="mb-4">
+              <HandPicker value={hand} onChange={setHand} compact />
             </div>
             <button onClick={onSetup} className="mb-4 w-full rounded-2xl bg-slate-100 py-3 text-sm font-semibold">
               {t('Машина ва режимни алмаштириш', 'Сменить машину и режим')}
