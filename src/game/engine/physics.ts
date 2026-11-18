@@ -1,6 +1,7 @@
 // Rapier physics: static autodrome colliders + a ray-cast vehicle (real
 // suspension, tyre grip, front-wheel drive). Car forward is local -Z.
-import RAPIER from '@dimforge/rapier3d-compat';
+import type RapierNS from '@dimforge/rapier3d-compat';
+import { loadRapier } from './platform';
 import * as THREE from 'three';
 import { meshTriangles, type AutodromeMeta } from './assets';
 import { COBALT, type VehicleProfile } from './vehicles';
@@ -36,10 +37,10 @@ const SLIDE_TARGET = 0.5; // rad (~29 deg) of slide angle at full lock
 const COUNTER_STEER = 1.0; // auto counter-steer per radian of slip angle
 
 export interface Physics {
-  world: RAPIER.World;
-  vehicle: RAPIER.DynamicRayCastVehicleController;
-  chassis: RAPIER.RigidBody;
-  surfaceOf(collider: RAPIER.Collider | null): SurfaceKind;
+  world: RapierNS.World;
+  vehicle: RapierNS.DynamicRayCastVehicleController;
+  chassis: RapierNS.RigidBody;
+  surfaceOf(collider: RapierNS.Collider | null): SurfaceKind;
   /** Steps the simulation; returns contacts that happened this step. */
   step(input: DriveInput, dt: number): StepEvents;
   speedKmh(): number;
@@ -65,9 +66,14 @@ export interface StepEvents {
   onRoad: [boolean, boolean, boolean, boolean];
 }
 
+// the physics library is loaded at runtime (site: from a fast public CDN, app: bundled)
+let RAPIER!: typeof RapierNS;
 let rapierReady: Promise<void> | null = null;
 export function initRapier() {
-  rapierReady ??= RAPIER.init();
+  rapierReady ??= loadRapier().then(async (m) => {
+    RAPIER = m;
+    await m.init();
+  });
   return rapierReady;
 }
 
@@ -97,7 +103,7 @@ export function createPhysics(
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
   world.timestep = 1 / 60;
   const kinds = new Map<number, SurfaceKind>();
-  const add = (desc: RAPIER.ColliderDesc, kind: SurfaceKind) => {
+  const add = (desc: RapierNS.ColliderDesc, kind: SurfaceKind) => {
     const c = world.createCollider(desc);
     kinds.set(c.handle, kind);
     return c;
@@ -187,7 +193,7 @@ export function createPhysics(
   const qInv = new THREE.Quaternion();
   const lv = new THREE.Vector3();
 
-  const surfaceOf = (c: RAPIER.Collider | null): SurfaceKind => (c ? kinds.get(c.handle) ?? 'ground' : 'ground');
+  const surfaceOf = (c: RapierNS.Collider | null): SurfaceKind => (c ? kinds.get(c.handle) ?? 'ground' : 'ground');
 
   return {
     world,

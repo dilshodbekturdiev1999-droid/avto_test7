@@ -19,9 +19,8 @@ const PracticePage = () => {
   // Avtodrom opens at once: fetch its code and 3D files in the background while this page is open.
   useEffect(() => {
     const id = window.setTimeout(() => {
-      void import('@/game/AvtodromPage');
-      void import('@/game/engine/preload').then((m) => m.preloadGame());
-    }, 1200);
+      void import('@/game/warm').then((m) => m.warmUpAvtodrom());
+    }, 600);
     return () => window.clearTimeout(id);
   }, []);
 

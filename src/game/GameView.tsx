@@ -13,7 +13,7 @@ import { buildScene, type MirrorRect } from './engine/scene';
 import { createSkids } from './engine/skids';
 import { EngineSound } from './engine/sound';
 import { VEHICLES, withRig } from './engine/vehicles';
-import { gameFile } from './engine/preload';
+import { gameFile, lowDevice } from './engine/preload';
 import ResultScreen from './ui/ResultScreen';
 import { COLORS, type GameSetup } from './ui/SetupScreen';
 
@@ -209,7 +209,7 @@ export default function GameView({
       try {
         await initRapier();
         const quality = pickQuality();
-        const assets = await loadGameAssets((p) => !disposed && setProgress(p), quality === 'low', baseProfile.file, baseProfile.hasLow);
+        const assets = await loadGameAssets((p) => !disposed && setProgress(p), lowDevice(), baseProfile.file, baseProfile.hasLow);
         if (disposed) return;
         const profile = withRig(baseProfile, assets.carRig);
         const gs = buildScene(host, assets, quality, profile);

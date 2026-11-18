@@ -157,9 +157,8 @@ const Index = () => {
   // the Avtodrom tile opens at once: fetch the game in the background after the page settles
   useEffect(() => {
     const id = window.setTimeout(() => {
-      void import('@/game/AvtodromPage');
-      void import('@/game/engine/preload').then((m) => m.preloadGame());
-    }, 2500);
+      void import('@/game/warm').then((m) => m.warmUpAvtodrom());
+    }, 800);
     return () => window.clearTimeout(id);
   }, []);
 

@@ -36,10 +36,13 @@ export default function SetupScreen({ initial, onStart, onBack }: { initial: Gam
   const [mode, setMode] = useState<GameMode>(initial?.mode ?? 'exam');
   const cars = VEHICLES.filter((v) => v.category === category);
   const car = cars.find((v) => v.id === vehicleId) ?? cars[0];
-  // download the game files while the player is still choosing
+  // car pictures first (tiny), then the game files while the player is still choosing
+  const [shown, setShown] = useState(0);
   useEffect(() => {
-    if (car) void preloadGame(car.file, car.hasLow);
-  }, [car]);
+    if (!car) return;
+    const id = window.setTimeout(() => void preloadGame(car.file, car.hasLow), shown >= cars.length ? 0 : 1200);
+    return () => window.clearTimeout(id);
+  }, [car, shown, cars.length]);
 
   const pickCategory = (c: Category) => {
     setCategory(c);
@@ -104,7 +107,15 @@ export default function SetupScreen({ initial, onStart, onBack }: { initial: Gam
                   style={ring(car?.id === v.id)}
                 >
                   <div className="aspect-[16/9] bg-gradient-to-b from-slate-50 to-slate-100">
-                    <img src={`${import.meta.env.BASE_URL}game/cars/${v.id}.webp`} alt="" className="h-full w-full object-contain" loading="lazy" />
+                    <img
+                      src={`${import.meta.env.BASE_URL}game/cars/${v.id}.webp`}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      decoding="async"
+                      fetchPriority="high"
+                      onLoad={() => setShown((n) => n + 1)}
+                      onError={() => setShown((n) => n + 1)}
+                    />
                   </div>
                   <div className="px-3 py-2.5 text-sm font-semibold">{v.name}</div>
                 </button>

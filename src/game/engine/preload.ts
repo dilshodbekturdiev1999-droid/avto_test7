@@ -4,7 +4,9 @@
 // No three.js here: this module is tiny and safe to import from any page.
 
 /** Bump when anything in public/game changes, so devices fetch the new files. */
-export const GAME_VERSION = '2026-11-18c';
+import { ASSETS_LOCAL } from './platform';
+
+export const GAME_VERSION = '2026-11-19a';
 const CACHE = `avtodrom-${GAME_VERSION}`;
 const BASE = `${import.meta.env.BASE_URL}game/`;
 
@@ -16,7 +18,7 @@ export function lowDevice() {
   const forced = new URLSearchParams(window.location.search).get('q');
   if (forced) return forced === 'low';
   const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 4;
-  return mem <= 2;
+  return !ASSETS_LOCAL || mem <= 2;
 }
 
 async function openCache(): Promise<Cache | null> {
