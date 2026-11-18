@@ -85,21 +85,21 @@ export function createPhysics(
 ): Physics {
   const P = profile;
   const MASS = P.mass;
-  const WHEELS = [
-    { x: -P.track, z: P.axleFront, front: true },
-    { x: P.track, z: P.axleFront, front: true },
-    { x: -P.track, z: P.axleRear, front: false },
-    { x: P.track, z: P.axleRear, front: false },
+  // Each wheel at its own hub (front and rear track and tyre size differ).
+  const hubs = P.wheels ?? [
+    { x: -P.track, z: P.axleFront, r: P.radius },
+    { x: P.track, z: P.axleFront, r: P.radius },
+    { x: -P.track, z: P.axleRear, r: P.radius },
+    { x: P.track, z: P.axleRear, r: P.radius },
   ];
   const REST = P.suspension.rest;
-  // keeps the chassis origin at road level at rest
-  const CON_Y = P.radius + REST - 0.066;
+  // connection height keeps the chassis origin at road level at rest
+  const WHEELS = hubs.map((h, i) => ({ x: h.x, z: h.z, r: h.r, front: i < 2, conY: h.r + REST - 0.066 }));
   const MAX_STEER = P.maxSteer;
   const ENGINE_FORCE = P.engineForce;
   const BRAKE_FORCE = P.brakeForce;
   const GEAR_LIMIT_KMH = P.gearLimit;
   const GEAR_FORCE = P.gearForce;
-  const RADIUS = P.radius;
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
   world.timestep = 1 / 60;
   const kinds = new Map<number, SurfaceKind>();
@@ -177,7 +177,7 @@ export function createPhysics(
   vehicle.indexUpAxis = 1;
   vehicle.setIndexForwardAxis = 2;
   WHEELS.forEach((w, i) => {
-    vehicle.addWheel({ x: w.x, y: CON_Y, z: w.z }, { x: 0, y: -1, z: 0 }, { x: -1, y: 0, z: 0 }, REST, RADIUS);
+    vehicle.addWheel({ x: w.x, y: w.conY, z: w.z }, { x: 0, y: -1, z: 0 }, { x: -1, y: 0, z: 0 }, REST, w.r);
     vehicle.setWheelSuspensionStiffness(i, P.suspension.stiffness);
     vehicle.setWheelSuspensionCompression(i, 3.2);
     vehicle.setWheelSuspensionRelaxation(i, 3.8);
@@ -206,13 +206,14 @@ export function createPhysics(
       const limit = GEAR_LIMIT_KMH[input.gear];
       const dir = input.gear === 'R' ? -1 : 1;
 
-      // Engine: full force well below the gear's limit, fading out near it.
+      // Engine: full pull at low speed, easing off smoothly towards the gear's limit
+      // (like a real engine running out of revs, no wall at the top).
       let force = 0;
       const engineOn = input.engineOn !== false;
       if (engineOn && input.gear !== 'N' && input.throttle > 0) {
-        const headroom = limit - Math.abs(Math.min(kmh * dir, limit));
-        const fade = Math.max(0, Math.min(1, headroom / (limit * 0.25)));
-        force = ENGINE_FORCE * GEAR_FORCE[input.gear] * input.throttle * fade * dir;
+        const u = Math.max(0, (kmh * dir) / (limit * 1.06));
+        const pull = kmh * dir >= limit ? 0 : u < 0.7 ? 1 : Math.max(0, 1 - Math.pow((u - 0.7) / 0.3, 4));
+        force = ENGINE_FORCE * GEAR_FORCE[input.gear] * input.throttle * pull * dir;
       }
       let brake = input.brake * BRAKE_FORCE;
       // On a slope (estakada) an idle car rolls back unless the brake or the
@@ -316,7 +317,7 @@ export function createPhysics(
     wheelLocal(i, target) {
       const w = WHEELS[i];
       const len = vehicle.wheelSuspensionLength(i) ?? REST;
-      return target.set(w.x, CON_Y - len, w.z);
+      return target.set(w.x, w.conY - len, w.z);
     },
     wheelSpin(i) {
       return vehicle.wheelRotation(i) ?? 0;

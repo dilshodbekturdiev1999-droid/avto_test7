@@ -6,10 +6,13 @@ import type { GameAssets } from './assets';
 import { buildTrees } from './trees';
 import { COBALT, type VehicleProfile } from './vehicles';
 import { gameFile } from './preload';
+import { depthInIsland, onIsland } from './course';
 
 export type Quality = 'low' | 'medium' | 'high';
 
 export interface CarLights {
+  /** Engine running: daytime lights in front, position lights at the back. */
+  engine: boolean;
   brake: boolean;
   reverse: boolean;
   /** -1 left, 1 right, 2 hazard (both), 0 off; blinking is driven by `time`. */
@@ -46,6 +49,31 @@ export interface GameScene {
   setBlob(x: number, z: number, yaw: number, y?: number): void;
   resize(w: number, h: number): void;
   dispose(): void;
+}
+
+type LampKind = 'head' | 'tail' | 'reverse' | 'indL' | 'indR';
+const LAMP_COLOR: Record<LampKind, number> = { head: 0xfff4e6, tail: 0xff1408, reverse: 0xffffff, indL: 0xff8a00, indR: 0xff8a00 };
+
+/** Soft round glow for the lamps (solid: an opaque bright core, for amber over a red lens). */
+function glowTexture(solid = false) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  if (solid) {
+    grad.addColorStop(0.28, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.45)');
+  } else {
+    grad.addColorStop(0.18, 'rgba(255,255,255,0.7)');
+    grad.addColorStop(0.45, 'rgba(255,255,255,0.16)');
+  }
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
 
 function blobTexture() {
@@ -105,26 +133,69 @@ function grainTexture(kind: 'asphalt' | 'grass') {
   return t;
 }
 
-/** Baked surface (unlit) with a tiled grain multiplied on top for close range. */
-function bakedMaterial(map: THREE.Texture | null, detail: THREE.Texture, repeat: THREE.Vector2, strength: number) {
+/**
+ * Baked surface (unlit) with a tiled grain multiplied on top for close range.
+ * kind 'asphalt': road paint is redrawn crisp from the bake (a threshold on the
+ * filtered bake with screen-space anti-aliasing, so lines stay sharp up close),
+ * and the asphalt gets a little sky sheen at grazing angles and a sun glint.
+ * kind 'grass': the baked grass is calmed to a natural lawn green.
+ */
+function bakedMaterial(map: THREE.Texture | null, detail: THREE.Texture, repeat: THREE.Vector2, strength: number, kind: 'asphalt' | 'grass' = 'asphalt', sun = new THREE.Vector3(0, 1, 0)) {
   const m = new THREE.MeshBasicMaterial({ map, toneMapped: false });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.detailMap = { value: detail };
     sh.uniforms.detailRepeat = { value: repeat };
     sh.uniforms.detailStrength = { value: strength };
+    sh.uniforms.sunDir = { value: sun };
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', `#include <common>
+varying vec3 vWPos;`)
+      .replace('#include <fog_vertex>', `#include <fog_vertex>
+vWPos = (modelMatrix * vec4(position, 1.0)).xyz;`);
+    const road = /* glsl */ `
+  // values are linear (the bake is sRGB): asphalt ~0.16, white paint ~0.89, yellow (0.78, 0.66, 0.14)
+  vec3 bk = diffuseColor.rgb;
+  float mn = min(bk.r, min(bk.g, bk.b));
+  float yl = (bk.r + bk.g) * 0.5 - bk.b;
+  float fw = max(fwidth(mn), 1e-4) * 1.2;
+  float fy = max(fwidth(yl), 1e-4) * 1.2;
+  float mw = smoothstep(0.45 - fw, 0.45 + fw, mn);
+  float my = smoothstep(0.3 - fy, 0.3 + fy, yl) * step(0.35, bk.r);
+  // blurry bake pixels around the paint become asphalt, then the paint is laid on crisp
+  float edge = clamp(smoothstep(0.19, 0.26, mn) + smoothstep(0.06, 0.12, yl) * step(0.2, bk.r), 0.0, 1.0);
+  vec3 asph = vec3(0.156, 0.153, 0.18);
+  vec3 col = mix(bk, asph, edge);
+  col = mix(col, vec3(0.86, 0.86, 0.84), mw);
+  col = mix(col, vec3(0.80, 0.58, 0.07), my);
+  float paint = max(mw, my);
+  diffuseColor.rgb = col * mix(vec3(1.0), texture2D(detailMap, vMapUv * detailRepeat).rgb * 2.0, detailStrength * (1.0 - 0.6 * paint));
+  // sheen: sky reflection rises at grazing angles; a soft sun glint
+  vec3 V = normalize(cameraPosition - vWPos);
+  float fres = pow(1.0 - clamp(V.y, 0.0, 1.0), 5.0);
+  vec3 R = reflect(-V, vec3(0.0, 1.0, 0.0));
+  float glint = pow(max(dot(R, sunDir), 0.0), 60.0);
+  diffuseColor.rgb += (fres * vec3(0.30, 0.34, 0.40) * 0.45 + glint * vec3(1.0, 0.95, 0.85) * 0.05) * (1.0 - 0.5 * paint);`;
+    const lawn = /* glsl */ `
+  // calmer, natural lawn: less neon, a touch of blue-green, slight darkening
+  vec3 g = diffuseColor.rgb;
+  float l = dot(g, vec3(0.299, 0.587, 0.114));
+  g = mix(vec3(l), g, 0.78) * vec3(0.86, 0.9, 0.82);
+  diffuseColor.rgb = g * mix(vec3(1.0), texture2D(detailMap, vMapUv * detailRepeat).rgb * 2.0, detailStrength);`;
     sh.fragmentShader = sh.fragmentShader
       .replace(
         '#include <common>',
         `#include <common>
 uniform sampler2D detailMap;
 uniform vec2 detailRepeat;
-uniform float detailStrength;`,
+uniform float detailStrength;
+uniform vec3 sunDir;
+varying vec3 vWPos;`,
       )
       .replace(
         '#include <map_fragment>',
         `#include <map_fragment>
 #ifdef USE_MAP
-  diffuseColor.rgb *= mix(vec3(1.0), texture2D(detailMap, vMapUv * detailRepeat).rgb * 2.0, detailStrength);
+${kind === 'asphalt' ? road : lawn}
 #endif`,
       );
   };
@@ -217,10 +288,10 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
         fieldImage = mat.map.image as CanvasImageSource;
       }
       if (mesh.name === 'Ground') {
-        asphaltMat ??= bakedMaterial(mat.map, asphaltGrain, asphaltRepeat, 0.4);
+        asphaltMat ??= bakedMaterial(mat.map, asphaltGrain, asphaltRepeat, 0.4, 'asphalt', sunDir);
         mesh.material = asphaltMat;
       } else {
-        grassMat ??= bakedMaterial(mat.map, grassGrain, grassRepeat, 0.55);
+        grassMat ??= bakedMaterial(mat.map, grassGrain, grassRepeat, 0.55, 'grass', sunDir);
         mesh.material = grassMat;
       }
       mesh.receiveShadow = false;
@@ -252,6 +323,41 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
     }
     mesh.receiveShadow = /^(Curb_|FieldKerb|Terrain|Apron|Platform)/.test(mesh.name);
   });
+  // Outside the fence: the campus replaces the old meadow, chain-link fence and hedge.
+  if (assets.campus) {
+    const old = /^(Terrain|Hills|HedgeRows|FenceFrame|FenceNet)/;
+    staticRoot.traverse((o) => {
+      if (old.test(o.name)) o.visible = false;
+    });
+    const campus = assets.campus.scene;
+    campus.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      const m = mesh.material as THREE.MeshStandardMaterial;
+      if (m.map) m.map.anisotropy = Math.min(maxAniso, quality === 'low' ? 2 : 8);
+      if (/Fence|Gate$/.test(m.name)) {
+        m.alphaTest = 0.5;
+        m.transparent = false;
+      }
+      // matte facades: windows glow softly from inside, no sky mirror
+      m.envMapIntensity = /Glass|Logo|Sign/.test(m.name) ? 0.15 : 0.5;
+    });
+    scene.add(campus);
+  }
+  // Signs on the islands stand well in from the kerb (the plate must not hang over the road).
+  staticRoot.updateMatrixWorld(true);
+  staticRoot.traverse((o) => {
+    if (!/^Sign_/.test(o.name) || !(o as THREE.Mesh).isMesh) return;
+    const b = new THREE.Box3().setFromObject(o);
+    const cx = (b.min.x + b.max.x) / 2;
+    const cz = (b.min.z + b.max.z) / 2;
+    if (depthInIsland(meta.islands, cx, cz) < 0) return; // apron signs are fine
+    const p = onIsland(meta.islands, cx, cz, 0.9);
+    o.position.x += p.x - cx;
+    o.position.z += p.z - cz;
+  });
   scene.add(staticRoot);
 
   // Realtime car shadow onto the baked asphalt.
@@ -282,7 +388,13 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
   const paint: THREE.MeshPhysicalMaterial[] = [];
   const glassMats: THREE.MeshPhysicalMaterial[] = [];
   const matte = new Map<string, THREE.MeshLambertMaterial>();
-  const lamp: Record<string, THREE.MeshPhysicalMaterial | undefined> = {};
+  // Lamps: every car names them the same (prepare_car.py); the Cobalt's own names map onto them.
+  const LAMP_OF: Record<string, LampKind> = {
+    HeadLamp: 'head', HeadBulb: 'head', TailLamp: 'tail', Tail: 'tail', TailLens: 'tail', ReverseLamp: 'reverse',
+    IndFL: 'indL', IndRL: 'indL', IndL: 'indL', IndFR: 'indR', IndRR: 'indR', IndR: 'indR',
+  };
+  const lampMats: Record<LampKind, THREE.MeshStandardMaterial[]> = { head: [], tail: [], reverse: [], indL: [], indR: [] };
+  const lampMeshes: { mesh: THREE.Mesh; kind: LampKind }[] = [];
   model.traverse((o) => {
     const mesh = o as THREE.Mesh;
     if (!mesh.isMesh) return;
@@ -290,6 +402,23 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
     mesh.receiveShadow = quality === 'high';
     const m = mesh.material as THREE.MeshPhysicalMaterial;
     if (!m || !m.name) return;
+    // Blender numbers repeated names on export (HeadLamp.001); the rig name is the part before
+    m.name = m.name.replace(/\.\d{3}$/, '');
+    const kind = /^Interior/.test(mesh.name) ? undefined : LAMP_OF[m.name];
+    if (kind) {
+      if (!lampMats[kind].includes(m)) {
+        lampMats[kind].push(m);
+        m.emissive = new THREE.Color(LAMP_COLOR[kind]);
+        // headlamps keep their own pattern (projector, LED strip); the rest glow over the whole lens
+        m.emissiveMap = kind === 'head' ? m.map : null;
+        m.emissiveIntensity = 0;
+        m.toneMapped = false; // a lit lamp stays saturated in daylight
+        m.needsUpdate = true;
+      }
+      lampMeshes.push({ mesh, kind });
+      mesh.castShadow = false;
+      return;
+    }
     if (/^(Seat|Dash|DashRed|Trim|Grille|Tire|UnderMetal)$/.test(m.name)) {
       // Matte plastics/rubber: no sky glare at grazing angles.
       let lm = matte.get(m.name);
@@ -321,17 +450,93 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
     if (m.name === 'Chrome' || m.name === 'Rim') m.envMapIntensity = 1.4;
   });
   carRoot.add(model);
-  const wheels = ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr'].map((n) => {
-    const w = model.getObjectByName(n)!;
-    // Re-parent each wheel under a steering pivot so spin and steer compose cleanly.
+  const wheels = ['fl', 'fr', 'rl', 'rr'].map((k) => {
+    const w = model.getObjectByName('wheel_' + k)!;
+    // Re-parent each wheel under a steering pivot so spin and steer compose cleanly:
+    // child 0 spins (tyre, rim, disc), the calliper (child 1) only steers.
     const pivot = new THREE.Object3D();
     pivot.position.copy(w.position);
     model.add(pivot);
     w.position.set(0, 0, 0);
     pivot.add(w);
+    const cal = model.getObjectByName('caliper_' + k);
+    if (cal) {
+      cal.position.set(0, 0, 0);
+      pivot.add(cal);
+    }
     return pivot;
   });
   scene.add(carRoot);
+
+  // Glow around each lamp: one soft sprite per lamp cluster, just outside the lens,
+  // brightest when the lamp faces the camera.
+  model.updateMatrixWorld(true);
+  const glowTex = glowTexture();
+  const glows: { sprite: THREE.Sprite; kind: LampKind; dirZ: number; base: number }[] = [];
+  const inv = new THREE.Matrix4().copy(model.matrixWorld).invert();
+  const clusters = new Map<string, { sum: THREE.Vector3; n: number; min: THREE.Vector3; max: THREE.Vector3; kind: LampKind }>();
+  const tv = new THREE.Vector3();
+  for (const { mesh, kind } of lampMeshes) {
+    const pos = mesh.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      tv.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(inv);
+      // one cluster per side and end (an indicator material can cover front and back)
+      const key = `${kind}:${tv.x < 0 ? 'L' : 'R'}:${tv.z < 0 ? 'F' : 'B'}`;
+      let g = clusters.get(key);
+      if (!g) clusters.set(key, (g = { sum: new THREE.Vector3(), n: 0, min: tv.clone(), max: tv.clone(), kind }));
+      g.sum.add(tv);
+      g.n++;
+      g.min.min(tv);
+      g.max.max(tv);
+    }
+  }
+  const coreTex = glowTexture(true);
+  const addGlow = (kind: LampKind, p: THREE.Vector3, size: number, dirZ: number) => {
+    // Indicators / reversing lights paint a solid core over the red lens. The red halo is
+    // blended normally so it also shows on a white car; headlamps add light.
+    const solid = kind !== 'head' && kind !== 'tail';
+    const mat = new THREE.SpriteMaterial({
+      map: solid ? coreTex : glowTex,
+      color: LAMP_COLOR[kind],
+      transparent: true,
+      depthWrite: false,
+      blending: kind === 'head' ? THREE.AdditiveBlending : THREE.NormalBlending,
+      opacity: 0,
+      toneMapped: false,
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.position.copy(p);
+    sprite.scale.setScalar(size);
+    sprite.renderOrder = 3;
+    sprite.visible = false;
+    model.add(sprite);
+    glows.push({ sprite, kind, dirZ, base: size });
+  };
+  const spots: Record<string, { p: THREE.Vector3; size: number }> = {};
+  for (const [key, g] of clusters) {
+    if (g.n < 40) continue;
+    const c = g.sum.divideScalar(g.n);
+    const front = key.endsWith('F');
+    c.z = front ? g.min.z - 0.03 : g.max.z + 0.03;
+    const size = Math.max(0.14, Math.min(0.34, Math.max(g.max.x - g.min.x, g.max.y - g.min.y) * 1.1));
+    spots[key] = { p: c, size };
+    addGlow(g.kind, c, size, front ? -1 : 1);
+  }
+  // Lamps a model does not have as separate parts glow inside the nearest cluster:
+  // rear indicators and reversing lights in the tail lamp, front indicators at the headlamp's outer edge.
+  for (const side of ['L', 'R'] as const) {
+    const ind: LampKind = side === 'L' ? 'indL' : 'indR';
+    const tail = spots[`tail:${side}:B`];
+    const head = spots[`head:${side}:F`];
+    if (tail && !spots[`${ind}:${side}:B`]) addGlow(ind, tail.p.clone().add(new THREE.Vector3(side === 'L' ? -0.07 : 0.07, 0.03, 0.01)), 0.17, 1);
+    if (tail && !spots[`reverse:${side}:B`]) addGlow('reverse', tail.p.clone().add(new THREE.Vector3(side === 'L' ? 0.09 : -0.09, -0.02, 0.012)), 0.14, 1);
+    // a front indicator that is only a side repeater (behind the front wheel) does not count
+    const frontInd = spots[`${ind}:${side}:F`];
+    if (head && (!frontInd || frontInd.p.z > head.p.z + 0.6)) addGlow(ind, head.p.clone().add(new THREE.Vector3(side === 'L' ? -0.12 : 0.12, 0, 0.01)), 0.16, -1);
+  }
+  const lampLevel: Record<LampKind, number> = { head: 0, tail: 0, reverse: 0, indL: 0, indR: 0 };
+  const camLocal = new THREE.Vector3();
+  const toCam = new THREE.Vector3();
 
   const camera = new THREE.PerspectiveCamera(55, 1, 0.08, 1200);
 
@@ -366,15 +571,28 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
         for (const m of paint) m.color.setHex(hex);
       },
       setLights(l) {
-        const blink = Math.floor(l.time * 3) % 2 === 0; // 1.5 Hz
+        const blink = Math.floor(l.time * 3) % 2 === 0; // 1.5 Hz, in step with the relay click
         const left = (l.signal === -1 || l.signal === 2) && blink;
         const right = (l.signal === 1 || l.signal === 2) && blink;
-        if (lamp.IndL) lamp.IndL.emissiveIntensity = left ? 2.6 : 0;
-        if (lamp.IndR) lamp.IndR.emissiveIntensity = right ? 2.6 : 0;
-        const tail = l.brake ? 2.4 : 0.35;
-        if (lamp.Tail) lamp.Tail.emissiveIntensity = tail;
-        if (lamp.TailLens) lamp.TailLens.emissiveIntensity = tail * 0.6;
-        if (lamp.HeadBulb) lamp.HeadBulb.emissiveIntensity = l.reverse ? 1.6 : 0.5;
+        lampLevel.head = l.engine ? 1.6 : 0;
+        lampLevel.tail = l.brake ? 4.0 : l.engine ? 0.3 : 0;
+        lampLevel.reverse = l.reverse && l.engine ? 2.6 : 0;
+        lampLevel.indL = left ? 3.4 : 0;
+        lampLevel.indR = right ? 3.4 : 0;
+        for (const k of Object.keys(lampMats) as LampKind[]) for (const m of lampMats[k]) m.emissiveIntensity = lampLevel[k];
+        camLocal.copy(camera.position);
+        model.worldToLocal(camLocal);
+        for (const g of glows) {
+          const lv = lampLevel[g.kind];
+          toCam.copy(camLocal).sub(g.sprite.position).normalize();
+          const facing = Math.max(0, toCam.z * g.dirZ);
+          const strength = g.kind === 'tail' ? (l.brake ? 0.85 : 0) : g.kind === 'head' ? (lv > 0 ? 0.75 : 0) : lv > 0 ? 1 : 0;
+          const m = g.sprite.material as THREE.SpriteMaterial;
+          m.opacity = strength * (0.15 + 0.85 * facing * facing);
+          g.sprite.visible = m.opacity > 0.01;
+          const grow = g.kind === 'tail' && l.brake ? 1.35 : 1;
+          g.sprite.scale.setScalar(g.base * (0.7 + 0.6 * facing) * grow);
+        }
       },
     },
     renderFrame(mirrors, mirrorTick) {

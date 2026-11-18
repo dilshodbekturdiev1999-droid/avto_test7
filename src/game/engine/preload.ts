@@ -6,7 +6,7 @@
 /** Bump when anything in public/game changes, so devices fetch the new files. */
 import { ASSETS_LOCAL } from './platform';
 
-export const GAME_VERSION = '2026-11-19a';
+export const GAME_VERSION = '2026-11-19b';
 const CACHE = `avtodrom-${GAME_VERSION}`;
 const BASE = `${import.meta.env.BASE_URL}game/`;
 
@@ -92,6 +92,8 @@ export function gameFileList(carFile: string, carHasLow: boolean) {
   return [
     'autodrome.glb',
     'autodrome.json',
+    'campus.glb',
+    'campus.json',
     low ? `${carFile}_low.glb` : `${carFile}.glb`,
     'trees/trees.json',
     ...TREE_FILES,

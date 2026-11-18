@@ -28,6 +28,8 @@ export interface AutodromeMeta {
 
 export interface GameAssets {
   autodrome: GLTF;
+  /** The Prava On campus around the fence (buildings, fence, street). */
+  campus: GLTF | null;
   car: GLTF;
   /** Rig measured by prepare_car.py (null for older cars). */
   carRig: import('./vehicles').CarRigJson | null;
@@ -96,8 +98,10 @@ export async function loadGameAssets(
     skid.wrapS = THREE.RepeatWrapping;
     return { env, bg, sun: new THREE.Vector3(...info.sun), skid };
   };
-  const [autodrome, trees, car, meta, env, carRigBuf] = await Promise.all([
+  const [autodrome, campus, campusInfo, trees, car, meta, env, carRigBuf] = await Promise.all([
     gltf('autodrome.glb'),
+    gltf('campus.glb').catch(() => null),
+    json<{ trees: TreeSpot[] }>('campus.json').catch(() => null),
     loadTrees(),
     gltf(carName).catch(() => gltf(`${carFile}.glb`)),
     json<AutodromeMeta>('autodrome.json'),
@@ -112,8 +116,11 @@ export async function loadGameAssets(
   } catch {
     carRig = null;
   }
+  // the campus brings its own trees (streets, lawns, between the homes)
+  if (campus && campusInfo) meta.trees = [...meta.trees.filter((t) => t.y > 0), ...campusInfo.trees];
   return {
     autodrome,
+    campus,
     car,
     carRig,
     meta,

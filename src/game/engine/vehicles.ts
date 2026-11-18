@@ -5,6 +5,8 @@
 import type { Gear } from './physics';
 
 export type Category = 'B' | 'C';
+export type EngineKind = 'petrol4' | 'turbo3' | 'turbo4' | 'diesel4';
+export type LampName = 'HeadLamp' | 'TailLamp' | 'ReverseLamp' | 'IndFL' | 'IndFR' | 'IndRL' | 'IndRR';
 
 export interface VehicleProfile {
   id: string;
@@ -15,8 +17,15 @@ export interface VehicleProfile {
   credit: string;
   defaultColor: number | null; // null = keep the model's own paint
   mass: number;
-  /** Half track (x) and half wheelbase (z) of the axles. */
+  /** Half track (x, front axle) and half wheelbase (z) of the axles. */
   track: number;
+  /** Each wheel's hub in car space (fl, fr, rl, rr) and its radius: front and rear
+   *  track / tyre size differ on most cars. Filled from the measured rig. */
+  wheels?: { x: number; z: number; r: number }[];
+  /** Tyre width (m), for the tyre marks. */
+  tyreWidth?: number;
+  /** Lamp centres in car space (three.js axes), for the glow. */
+  lamps?: Partial<Record<LampName, [number, number, number]>>;
   base: number;
   /** Signed z of the axles (front is negative). */
   axleFront: number;
@@ -31,6 +40,8 @@ export interface VehicleProfile {
   cabin: { hx: number; hy: number; hz: number; y: number; z: number };
   maxSteer: number;
   engineForce: number;
+  /** Engine sound character (sound.ts). */
+  engine: EngineKind;
   driven: 'front' | 'rear';
   gearLimit: Record<Gear, number>;
   gearForce: Record<Gear, number>;
@@ -43,10 +54,13 @@ export interface VehicleProfile {
   suspension: { rest: number; stiffness: number; travel: number; maxForce: number };
 }
 
-const CAR_GEARS = {
-  gearLimit: { R: 15, N: 0, '1': 26, '2': 55 } as Record<Gear, number>,
-  gearForce: { R: 0.75, N: 0, '1': 1, '2': 0.62 } as Record<Gear, number>,
-};
+/** Every car tops out at 50 km/h in 2nd; how fast it gets there differs (see the
+ *  0-50 table printed by scripts/test-accel.ts). */
+export const TOP_KMH = 50;
+const gears = (first: number, reverse = 15, f2 = 0.62): Pick<VehicleProfile, 'gearLimit' | 'gearForce'> => ({
+  gearLimit: { R: reverse, N: 0, '1': first, '2': TOP_KMH },
+  gearForce: { R: 0.75, N: 0, '1': 1, '2': f2 },
+});
 
 export const COBALT: VehicleProfile = {
   id: 'cobalt',
@@ -68,9 +82,10 @@ export const COBALT: VehicleProfile = {
   body: { hx: 0.84, hy: 0.3, hz: 2.18, y: 0.62, z: -0.07 },
   cabin: { hx: 0.68, hy: 0.26, hz: 1.0, y: 1.18, z: 0.35 },
   maxSteer: 0.56,
-  engineForce: 2200,
+  engineForce: 1500,
+  engine: 'petrol4',
   driven: 'front',
-  ...CAR_GEARS,
+  ...gears(26),
   brakeForce: 40,
   eye: [-0.36, 1.24, 0.36],
   mirror: { x: 0.98, y: 1.02, z: -0.42 },
@@ -80,8 +95,26 @@ export const COBALT: VehicleProfile = {
 };
 
 // Prepared by blender/prepare_car.py: car_<id>.json holds the measured rig
-// (wheels, bumpers, size) and replaces the geometry numbers below; what stays
-// from here is the handling.
+// (wheels, bumpers, size, lamps) and replaces the geometry numbers below; what
+// stays from here is the handling.
+export const TRACKER: VehicleProfile = {
+  ...COBALT,
+  id: 'tracker',
+  name: 'Chevrolet Tracker',
+  file: 'car_tracker',
+  credit: '2022 Chevrolet Tracker RS 335T (Sketchfab, CC BY 4.0)',
+  defaultColor: 0xeeeeea,
+  mass: 1300,
+  engineForce: 1800,
+  engine: 'turbo3',
+  ...gears(28),
+  maxSteer: 0.56,
+  eye: [-0.37, 1.36, 0.25],
+  mirror: { x: 1.0, y: 1.12, z: -0.45 },
+  chaseDist: 6.6,
+  chaseHeight: 2.5,
+};
+
 export const MALIBU: VehicleProfile = {
   ...COBALT,
   id: 'malibu',
@@ -90,24 +123,13 @@ export const MALIBU: VehicleProfile = {
   credit: 'Chevrolet Malibu 2021 — ItsDiyor (Sketchfab, CC BY 4.0)',
   defaultColor: 0x0d0e10,
   mass: 1450,
-  engineForce: 2500,
+  engineForce: 2300,
+  engine: 'turbo4',
+  ...gears(30),
   maxSteer: 0.54,
   eye: [-0.38, 1.2, 0.3],
   mirror: { x: 1.02, y: 1.0, z: -0.5 },
   chaseDist: 6.8,
-};
-
-export const GENTRA: VehicleProfile = {
-  ...COBALT,
-  id: 'gentra',
-  name: 'Chevrolet Gentra',
-  file: 'car_gentra',
-  credit: 'Gentra — uzbek_supra (Sketchfab, CC BY 4.0)',
-  defaultColor: 0x0d0e10,
-  mass: 1250,
-  engineForce: 2250,
-  eye: [-0.36, 1.22, 0.32],
-  mirror: { x: 0.98, y: 1.0, z: -0.45 },
 };
 
 export const ISUZU: VehicleProfile = {
@@ -119,10 +141,11 @@ export const ISUZU: VehicleProfile = {
   credit: 'Isuzu Elf series — Romanov13 (Sketchfab, CC BY 4.0)',
   defaultColor: null,
   mass: 4500,
-  engineForce: 6200,
+  engineForce: 4800,
+  engine: 'diesel4',
   driven: 'rear',
   maxSteer: 0.62,
-  gearLimit: { R: 10, N: 0, '1': 20, '2': 45 },
+  gearLimit: { R: 10, N: 0, '1': 20, '2': TOP_KMH },
   gearForce: { R: 0.8, N: 0, '1': 1, '2': 0.6 },
   brakeForce: 110,
   eye: [-0.45, 1.85, -1.95],
@@ -132,7 +155,7 @@ export const ISUZU: VehicleProfile = {
   suspension: { rest: 0.26, stiffness: 46, travel: 0.22, maxForce: 45000 },
 };
 
-export const VEHICLES: VehicleProfile[] = [COBALT, MALIBU, GENTRA, ISUZU];
+export const VEHICLES: VehicleProfile[] = [COBALT, TRACKER, MALIBU, ISUZU];
 
 /** Rig measured by prepare_car.py (wheel hubs, bumpers, width, height). */
 export interface CarRigJson {
@@ -145,6 +168,10 @@ export interface CarRigJson {
   bumperRear?: number;
   halfWidth?: number;
   height?: number;
+  tyreWidth?: number;
+  lamps?: Partial<Record<LampName, [number, number, number]>>;
+  /** Per-wheel radius (old rigs: one radius for all). */
+  radii?: [number, number, number, number];
 }
 
 /** Apply the measured rig to a profile (keeps the handling numbers). */
@@ -159,9 +186,14 @@ export function withRig(p: VehicleProfile, rig: CarRigJson | null): VehicleProfi
   const len = bumperRear - bumperFront;
   const height = rig.height ?? p.body.y * 2 + p.cabin.hy * 2;
   const isTruck = p.category === 'C';
+  const hubs = [rig.wheel_fl, rig.wheel_fr, rig.wheel_rl, rig.wheel_rr];
+  const wheels = hubs.map((h, i) => ({ x: h[0], z: h[2], r: rig.radii?.[i] ?? (h[1] > 0.05 ? h[1] : rig.radius) }));
   return {
     ...p,
     track,
+    wheels,
+    tyreWidth: rig.tyreWidth ?? p.tyreWidth,
+    lamps: rig.lamps ?? p.lamps,
     axleFront,
     axleRear,
     base: (axleRear - axleFront) / 2,

@@ -7,7 +7,7 @@ import { useT } from '@/hooks/useT';
 import { loadGameAssets } from './engine/assets';
 import { buildCourse, type Rect } from './engine/course';
 import { createExam, type Approach, type Exam, type ExamFrame, type ExamStatus, type Penalty } from './engine/exam';
-import { buildTrafficLights, lightAt } from './engine/lights';
+import { buildTrafficLights, createLightController } from './engine/lights';
 import { createPhysics, initRapier, type DriveInput, type Gear } from './engine/physics';
 import { buildScene, type MirrorRect } from './engine/scene';
 import { createSkids } from './engine/skids';
@@ -216,11 +216,12 @@ export default function GameView({
         const start = { x: assets.meta.start.x, z: assets.meta.start.y, heading: assets.meta.start.heading };
         const phys = createPhysics(gs.staticRoot, assets.meta, start, profile);
         const course = buildCourse(assets.meta);
-        const lights = buildTrafficLights(gs.scene, course.cross);
+        const signals = createLightController(course.cross);
+        const lights = buildTrafficLights(gs.scene, course.cross, signals, assets.meta.islands);
         let examRun: Exam | null = exam ? createExam(setup.category, course) : null;
         let lastStatus: ExamStatus | null = null;
         if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { gs, phys, input: input.current, course, exam: () => examRun, profile, quality };
-        const sound = new EngineSound();
+        const sound = new EngineSound(profile);
         soundRef.current = sound;
         const skids = createSkids(gs.scene, assets.skidTexture, quality !== 'low');
         let clock = 0;
@@ -306,6 +307,7 @@ export default function GameView({
         }
         resetRef.current = () => {
           phys.reset(start.x, start.z, start.heading);
+          signals.reset();
           penalty = 0;
           elapsed = 0;
           examRun = exam ? createExam(setup.category, course) : null;
@@ -329,8 +331,8 @@ export default function GameView({
           return { x: tmpV.x, z: tmpV.z };
         };
         const contacts = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
-        const wheelLocalX = [-profile.track, profile.track, -profile.track, profile.track];
-        const wheelLocalZ = [profile.axleFront, profile.axleFront, profile.axleRear, profile.axleRear];
+        const wheelLocalX = profile.wheels ? profile.wheels.map((w) => w.x) : [-profile.track, profile.track, -profile.track, profile.track];
+        const wheelLocalZ = profile.wheels ? profile.wheels.map((w) => w.z) : [profile.axleFront, profile.axleFront, profile.axleRear, profile.axleRear];
 
         const camPos = new THREE.Vector3();
         const camLook = new THREE.Vector3();
@@ -409,7 +411,14 @@ export default function GameView({
             curbCooldown -= dt;
             hitCooldown -= dt;
             elapsed += dt;
-            lights.update(elapsed);
+            {
+              const cp = phys.chassis.translation();
+              const cq = phys.chassis.rotation();
+              const fw = tmpV.set(0, 0, -1).applyQuaternion(tmpQ.set(cq.x, cq.y, cq.z, cq.w));
+              const fl = Math.hypot(fw.x, fw.z) || 1;
+              signals.update(dt, { x: cp.x, z: cp.z, dx: fw.x / fl, dz: fw.z / fl });
+            }
+            lights.update();
 
             // Engine stall (exam): pulling away on the parking brake, or from rest in 2nd gear.
             if (exam && engineRef.current) {
@@ -458,7 +467,7 @@ export default function GameView({
                 belt: beltRef.current,
                 signal: hazardRef.current ? 0 : signalRef.current,
                 hazard: hazardRef.current,
-                light: (a: Approach) => lightAt(elapsed, a),
+                light: (a: Approach) => signals.light(a),
               };
               const got = examRun.update(frame);
               for (const p of got) flash(t(p.uz, p.ru), p.points);
@@ -549,6 +558,15 @@ export default function GameView({
             gs.camera.lookAt(camLook);
             gs.camera.fov = fovFor(55 + Math.min(Math.abs(kmh) * 0.12, 6));
           }
+          if (import.meta.env.DEV) {
+            // screenshot scripts: window.__cam = { p: [x,y,z], l: [x,y,z], fov }
+            const o = (window as unknown as { __cam?: { p: number[]; l: number[]; fov?: number } }).__cam;
+            if (o) {
+              gs.camera.position.set(o.p[0], o.p[1], o.p[2]);
+              gs.camera.lookAt(o.l[0], o.l[1], o.l[2]);
+              gs.camera.fov = o.fov ?? 50;
+            }
+          }
           if (!look) {
             lookYaw *= Math.exp(-dt * 1.8);
             lookPitch *= Math.exp(-dt * 1.8);
@@ -573,7 +591,7 @@ export default function GameView({
             lastBlink = blinkOn;
             if (mode2 !== 0) sound.tick();
           }
-          gs.car.setLights({ brake: drive.brake > 0.15, reverse: drive.gear === 'R', signal: mode2, time: clock });
+          gs.car.setLights({ engine: engineRef.current, brake: drive.brake > 0.15, reverse: drive.gear === 'R', signal: mode2, time: clock });
           const ev2 = lastEv;
           skids.update(
             dt,

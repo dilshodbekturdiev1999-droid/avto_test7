@@ -114,3 +114,45 @@ export function distToIslands(islands: [number, number][][], x: number, z: numbe
   }
   return best;
 }
+
+/** Distance from a point inside an island to that island's edge (-1 when on the road). */
+export function depthInIsland(islands: [number, number][][], x: number, z: number): number {
+  for (const poly of islands) {
+    let inside = false;
+    let best = 1e9;
+    const n = poly.length;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const [ax, az] = poly[j];
+      const [bx, bz] = poly[i];
+      if ((az > z) !== (bz > z) && x < ax + ((z - az) * (bx - ax)) / (bz - az)) inside = !inside;
+      const dx = bx - ax;
+      const dz = bz - az;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / Math.max(dx * dx + dz * dz, 1e-9)));
+      best = Math.min(best, Math.hypot(ax + dx * t - x, az + dz * t - z));
+    }
+    if (inside) return best;
+  }
+  return -1;
+}
+
+/**
+ * Where a pole may stand: the nearest point to (x, z) that is on an island at least
+ * `margin` metres in from the kerb (so a sign or signal never stands on the road
+ * or hangs over it). Returns the point unchanged when it is already fine.
+ */
+export function onIsland(islands: [number, number][][], x: number, z: number, margin = 0.9, maxMove = 8): { x: number; z: number } {
+  if (depthInIsland(islands, x, z) >= margin) return { x, z };
+  for (let r = 0.25; r <= maxMove; r += 0.25) {
+    let found: { x: number; z: number; d: number } | null = null;
+    const steps = Math.max(12, Math.round(r * 12));
+    for (let k = 0; k < steps; k++) {
+      const a = (k / steps) * Math.PI * 2;
+      const px = x + Math.cos(a) * r;
+      const pz = z + Math.sin(a) * r;
+      const d = depthInIsland(islands, px, pz);
+      if (d >= margin && (!found || d > found.d)) found = { x: px, z: pz, d };
+    }
+    if (found) return { x: found.x, z: found.z };
+  }
+  return { x, z };
+}
