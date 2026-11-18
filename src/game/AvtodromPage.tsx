@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import GameView from './GameView';
+import { isTouchDevice } from './engine/device';
+import { lockLandscape } from './engine/platform';
 import SetupScreen, { type GameSetup } from './ui/SetupScreen';
 
 /** Avtodrom: choose category, car and mode, then drive (exam with penalties or free). */
@@ -13,7 +15,7 @@ export default function AvtodromPage() {
   const exit = () => navigate(-1);
 
   return createPortal(
-    <div className="fixed inset-0 z-50 select-none overflow-hidden bg-[#0b0f17]">
+    <div className="fixed inset-0 z-50 select-none overflow-hidden bg-[#f2f4f7]">
       {setup ? (
         <GameView
           key={run}
@@ -30,6 +32,8 @@ export default function AvtodromPage() {
           initial={last}
           onBack={exit}
           onStart={(s) => {
+            // inside the tap, so the browser allows fullscreen + landscape lock
+            if (isTouchDevice()) void lockLandscape();
             setSetup(s);
             setRun((r) => r + 1);
           }}

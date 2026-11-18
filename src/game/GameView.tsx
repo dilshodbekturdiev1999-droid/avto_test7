@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { buzz } from './engine/haptic';
-import { ArrowBigLeft, ArrowBigRight, ArrowLeft, Camera, CircleParking, FlipHorizontal2, KeyRound, Menu, RotateCcw, TriangleAlert, Volume2, VolumeX } from 'lucide-react';
+import { buzz, lockLandscape, unlockOrientation } from './engine/platform';
+import { isTouchDevice, pickQuality } from './engine/device';
+import { ArrowBigLeft, ArrowBigRight, ArrowLeft, Camera, CircleParking, FlipHorizontal2, KeyRound, Menu, RotateCcw, Smartphone, TriangleAlert, Volume2, VolumeX } from 'lucide-react';
 import { useT } from '@/hooks/useT';
 import { loadGameAssets } from './engine/assets';
 import { buildCourse, type Rect } from './engine/course';
 import { createExam, type Approach, type Exam, type ExamFrame, type ExamStatus, type Penalty } from './engine/exam';
 import { buildTrafficLights, lightAt } from './engine/lights';
 import { createPhysics, initRapier, type DriveInput, type Gear } from './engine/physics';
-import { buildScene, type MirrorRect, type Quality } from './engine/scene';
+import { buildScene, type MirrorRect } from './engine/scene';
 import { createSkids } from './engine/skids';
 import { EngineSound } from './engine/sound';
 import { VEHICLES, withRig } from './engine/vehicles';
@@ -28,29 +29,18 @@ function BeltIcon({ className }: { className?: string }) {
   );
 }
 
-/** Where the two side-mirror windows go (CSS px, origin top-left). */
-function mirrorRects(vw: number, vh: number, portrait: boolean): { left: MirrorRect; right: MirrorRect } {
-  if (portrait) {
-    const w = Math.round(vw * 0.4);
-    const h = Math.round(w * 0.5);
-    const y = 168;
-    return { left: { x: 12, y, w, h }, right: { x: vw - 12 - w, y, w, h } };
-  }
-  const w = Math.round(Math.min(vw * 0.24, 250));
+/** Where the two side-mirror windows go (CSS px, origin top-left). Landscape only. */
+function mirrorRects(vw: number): { left: MirrorRect; right: MirrorRect } {
+  const w = Math.round(Math.min(vw * 0.22, 240));
   const h = Math.round(w * 0.5);
-  const y = 84;
-  return { left: { x: 150, y, w, h }, right: { x: vw - 12 - w, y, w, h } };
+  const y = 96;
+  return { left: { x: 12, y, w, h }, right: { x: vw - 12 - w, y, w, h } };
 }
 
-function pickQuality(): Quality {
-  const forced = new URLSearchParams(window.location.search).get('q');
-  if (forced === 'low' || forced === 'medium' || forced === 'high') return forced;
-  const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 4;
-  const cores = navigator.hardwareConcurrency ?? 4;
-  if (mem <= 2 || cores <= 4) return 'low';
-  if (mem <= 4 || cores <= 6) return 'medium';
-  return 'high';
-}
+/** Prava On look for the in-game controls: white panels, blue = on. */
+const BLUE = '#2563EB';
+const panel = 'bg-white/90 text-slate-900 shadow-[0_2px_12px_rgba(15,23,42,0.22)]';
+const roundBtn = 'grid h-10 w-10 place-items-center rounded-full transition-colors active:scale-95';
 
 export default function GameView({
   setup,
@@ -79,7 +69,6 @@ export default function GameView({
   const [progress, setProgress] = useState(0);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hud, setHud] = useState({ kmh: 0, time: 0, penalty: 0 });
   const [toast, setToast] = useState<string | null>(null);
   const [gear, setGearState] = useState<Gear>(exam ? 'N' : '1');
   const [cam, setCam] = useState<CamMode>('chase');
@@ -96,16 +85,22 @@ export default function GameView({
   const engineRef = useRef(engineOn);
   const handbrakeRef = useRef(handbrake);
   const [muted, setMuted] = useState(false);
-  const [wheelAngle, setWheelAngle] = useState(0);
+  const touch = useRef(isTouchDevice()).current;
   const [portrait, setPortrait] = useState(() => window.innerHeight > window.innerWidth);
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
+  const wheelSvgRef = useRef<SVGSVGElement>(null);
+  const speedRef = useRef<HTMLDivElement>(null);
+  const arcRef = useRef<SVGCircleElement>(null);
+  const timeRef = useRef<HTMLSpanElement>(null);
+  const penRef = useRef<HTMLSpanElement>(null);
+  const rotateBlock = touch && portrait;
   const [mirrors, setMirrors] = useState(false);
   const [signal, setSignalState] = useState<-1 | 0 | 1>(0);
   const [hazard, setHazard] = useState(false);
   const mirrorsRef = useRef(false);
   const signalRef = useRef<-1 | 0 | 1>(0);
   const hazardRef = useRef(false);
-  const rectsRef = useRef(mirrorRects(window.innerWidth, window.innerHeight, window.innerHeight > window.innerWidth));
+  const rectsRef = useRef(mirrorRects(window.innerWidth));
   const wheelRef = useRef<HTMLDivElement>(null);
   const wheelDrag = useRef<{ id: number; last: number; angle: number } | null>(null);
 
@@ -115,8 +110,16 @@ export default function GameView({
   }, []);
 
   useEffect(() => {
-    pausedRef.current = menu || finished;
-  }, [menu, finished]);
+    pausedRef.current = menu || finished || rotateBlock;
+  }, [menu, finished, rotateBlock]);
+  // phones: landscape only
+  useEffect(() => {
+    if (!touch) return;
+    void lockLandscape();
+    return () => {
+      void unlockOrientation();
+    };
+  }, [touch]);
   useEffect(() => {
     colorRef.current = colorHex;
   }, [colorHex]);
@@ -152,10 +155,10 @@ export default function GameView({
     hazardRef.current = hazard;
   }, [hazard]);
   useEffect(() => {
-    rectsRef.current = mirrorRects(vp.w, vp.h, portrait);
-  }, [vp, portrait]);
+    rectsRef.current = mirrorRects(vp.w);
+  }, [vp]);
 
-  // The layout follows how the phone is held (portrait or landscape).
+  // Phones are played in landscape; when held upright the game waits behind a "rotate" screen.
   useEffect(() => {
     const update = () => {
       setPortrait(window.innerHeight > window.innerWidth);
@@ -216,7 +219,7 @@ export default function GameView({
         const lights = buildTrafficLights(gs.scene, course.cross);
         let examRun: Exam | null = exam ? createExam(setup.category, course) : null;
         let lastStatus: ExamStatus | null = null;
-        if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { gs, phys, input: input.current, course, exam: () => examRun, profile };
+        if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { gs, phys, input: input.current, course, exam: () => examRun, profile, quality };
         const sound = new EngineSound();
         soundRef.current = sound;
         const skids = createSkids(gs.scene, assets.skidTexture, quality !== 'low');
@@ -225,16 +228,34 @@ export default function GameView({
         let signalTurned = false;
         const contact = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
         let lastEv: ReturnType<typeof phys.step> | null = null;
+        const skidIn = [0, 1, 2, 3].map((i) => ({ pos: null as THREE.Vector3 | null, strength: 0, smoke: i >= 2 }));
         const tmpV = new THREE.Vector3();
 
-        // Render at (up to) the phone's native pixel density, and adapt it to the
-        // frame rate so the picture stays sharp without stuttering.
-        const maxRatio = Math.min(window.devicePixelRatio || 1, quality === 'high' ? 2.5 : quality === 'medium' ? 2 : 1.25);
-        const minRatio = Math.min(1, maxRatio);
-        let ratio = Math.min(maxRatio, quality === 'low' ? 1 : 1.75);
+        // Sharp picture at the screen's density; lowered only if the frame rate really
+        // drops (measured over 3 s), raised back at most once, so it never pumps.
+        const maxRatio = Math.min(window.devicePixelRatio || 1, quality === 'high' ? 2 : quality === 'medium' ? 2 : 1.25);
+        const minRatio = Math.min(quality === 'low' ? 1 : 1.25, maxRatio);
+        let ratio = Math.min(maxRatio, quality === 'low' ? 1 : quality === 'medium' ? 1.75 : 2);
         gs.renderer.setPixelRatio(ratio);
         let frames = 0;
         let frameClock = 0;
+        let runClock = 0;
+        let raised = false;
+        // physics pose before / after the last step, drawn interpolated
+        const prevP = new THREE.Vector3();
+        const curP = new THREE.Vector3();
+        const prevQ = new THREE.Quaternion();
+        const curQ = new THREE.Quaternion();
+        const readPose = (pv: THREE.Vector3, qv: THREE.Quaternion) => {
+          const a = phys.chassis.translation();
+          const b = phys.chassis.rotation();
+          pv.set(a.x, a.y, a.z);
+          qv.set(b.x, b.y, b.z, b.w);
+        };
+        readPose(curP, curQ);
+        prevP.copy(curP);
+        prevQ.copy(curQ);
+        const STEP = 1 / 60;
         const resize = () => gs.resize(host.clientWidth, host.clientHeight);
         resize();
         const ro = new ResizeObserver(resize);
@@ -314,11 +335,13 @@ export default function GameView({
         const camPos = new THREE.Vector3();
         const camLook = new THREE.Vector3();
         const tmpQ = new THREE.Quaternion();
+        const tmpE = new THREE.Euler();
         const fwd = new THREE.Vector3();
         const wheelPos = new THREE.Vector3();
         let camInit = false;
         let acc = 0;
         let hudTimer = 0;
+        let statusClock = 0;
         let last = performance.now();
         let lastCam: CamMode = camRef.current;
 
@@ -331,17 +354,21 @@ export default function GameView({
 
         const frame = (now: number) => {
           raf = requestAnimationFrame(frame);
-          const dt = Math.min((now - last) / 1000, 0.1);
+          const dt = Math.min((now - last) / 1000, 0.05);
           last = now;
           frames++;
           frameClock += dt;
-          if (frameClock >= 1.5) {
+          runClock += dt;
+          if (frameClock >= 3) {
             const fps = frames / frameClock;
             frames = 0;
             frameClock = 0;
             let next = ratio;
-            if (fps < 40) next = Math.max(minRatio, ratio - 0.25);
-            else if (fps > 56) next = Math.min(maxRatio, ratio + 0.25);
+            if (fps < 42) next = Math.max(minRatio, ratio - 0.25);
+            else if (fps > 58 && !raised && runClock > 8 && ratio < maxRatio) {
+              next = Math.min(maxRatio, ratio + 0.25);
+              raised = true;
+            }
             if (next !== ratio) {
               ratio = next;
               gs.renderer.setPixelRatio(ratio);
@@ -361,10 +388,13 @@ export default function GameView({
 
           if (!pausedRef.current) {
             acc += dt;
-            while (acc >= 1 / 60) {
-              const ev = phys.step(drive, 1 / 60);
+            while (acc >= STEP) {
+              prevP.copy(curP);
+              prevQ.copy(curQ);
+              const ev = phys.step(drive, STEP);
+              readPose(curP, curQ);
               lastEv = ev;
-              acc -= 1 / 60;
+              acc -= STEP;
               if (!exam && ev.wheelOnCurb && curbCooldown <= 0) {
                 setToast(t('Бордюрга чиқиш', 'Наезд на бордюр'));
                 toastTimer = 1.6;
@@ -405,7 +435,7 @@ export default function GameView({
               gs.car.root.position.set(ct.x, ct.y, ct.z);
               gs.car.root.quaternion.set(cr.x, cr.y, cr.z, cr.w);
               const q = gs.car.root.quaternion;
-              const f3 = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
+              const f3 = fwd.set(0, 0, -1).applyQuaternion(q);
               const fl = Math.hypot(f3.x, f3.z) || 1;
               const wheels = [0, 1, 2, 3].map((i) => {
                 const c = phys.wheelContact(i, contacts[i]);
@@ -432,8 +462,12 @@ export default function GameView({
               };
               const got = examRun.update(frame);
               for (const p of got) flash(t(p.uz, p.ru), p.points);
-              lastStatus = examRun.status(frame);
-              penalty = lastStatus.total;
+              statusClock -= dt;
+              if (statusClock <= 0 || got.length) {
+                statusClock = 0.1;
+                lastStatus = examRun.status(frame);
+                penalty = lastStatus.total;
+              }
               if (lastStatus.alarm) {
                 alarmClock -= dt;
                 if (alarmClock <= 0) {
@@ -452,17 +486,19 @@ export default function GameView({
             }
           } else {
             acc = 0;
+            prevP.copy(curP);
+            prevQ.copy(curQ);
           }
           if (toastTimer > 0) {
             toastTimer -= dt;
             if (toastTimer <= 0) setToast(null);
           }
 
-          // Car pose.
-          const tr = phys.chassis.translation();
-          const rot = phys.chassis.rotation();
-          gs.car.root.position.set(tr.x, tr.y, tr.z);
-          gs.car.root.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+          // Car pose, interpolated between the last two physics steps (smooth at any refresh rate).
+          const alpha = Math.min(1, acc / STEP);
+          gs.car.root.position.lerpVectors(prevP, curP, alpha);
+          gs.car.root.quaternion.slerpQuaternions(prevQ, curQ, alpha);
+          const tr = gs.car.root.position;
           if (colorRef.current !== null) gs.car.setColor(colorRef.current);
           const steer = phys.steerAngle();
           gs.car.wheels.forEach((w, i) => {
@@ -494,7 +530,7 @@ export default function GameView({
           if (mode === 'cockpit') {
             tmpV.set(profile.eye[0], profile.eye[1], profile.eye[2]).applyQuaternion(gs.car.root.quaternion).add(gs.car.root.position);
             gs.camera.position.copy(tmpV);
-            tmpQ.setFromEuler(new THREE.Euler(lookPitch * 0.6 - 0.05, lookYaw, 0, 'YXZ'));
+            tmpQ.setFromEuler(tmpE.set(lookPitch * 0.6 - 0.05, lookYaw, 0, 'YXZ'));
             gs.camera.quaternion.copy(gs.car.root.quaternion).multiply(tmpQ);
             gs.camera.fov = fovFor(72);
           } else {
@@ -542,11 +578,11 @@ export default function GameView({
           skids.update(
             dt,
             clock,
-            [0, 1, 2, 3].map((i) => ({
-              pos: ev2 && ev2.onRoad[i] ? phys.wheelContact(i, contact[i]) : null,
-              strength: ev2 ? ev2.skid[i] : 0,
-              smoke: i >= 2,
-            })),
+            skidIn.map((w, i) => {
+              w.pos = ev2 && ev2.onRoad[i] ? phys.wheelContact(i, contact[i]) : null;
+              w.strength = ev2 ? ev2.skid[i] : 0;
+              return w;
+            }),
             ev2 ? ev2.drift : 0,
             Math.abs(kmh) / 3.6,
           );
@@ -559,7 +595,15 @@ export default function GameView({
           hudTimer += dt;
           if (hudTimer > 0.1) {
             hudTimer = 0;
-            setHud({ kmh: Math.round(Math.abs(kmh)), time: Math.floor(elapsed), penalty });
+            const sp = Math.round(Math.abs(kmh));
+            if (speedRef.current) speedRef.current.textContent = String(sp);
+            if (arcRef.current) arcRef.current.setAttribute('stroke-dasharray', `${Math.min(sp / 60, 1) * 207} 400`);
+            const secs = Math.floor(elapsed);
+            if (timeRef.current) timeRef.current.textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+            if (penRef.current) {
+              penRef.current.textContent = String(penalty);
+              penRef.current.style.color = penalty > 0 ? '#dc2626' : '';
+            }
             if (lastStatus) {
               const ls = lastStatus;
               setExamView((v) =>
@@ -585,8 +629,8 @@ export default function GameView({
                   mctx.strokeRect((r.x0 / W) * mw, (r.z0 / D) * mh, ((r.x1 - r.x0) / W) * mw, ((r.z1 - r.z0) / D) * mh);
                 };
                 const other = setup.category === 'B' ? 'C' : 'B';
-                box(course.box[setup.category].rect, '#a3e635');
-                box(course.parallel[setup.category].rect, '#a3e635');
+                box(course.box[setup.category].rect, '#22c55e');
+                box(course.parallel[setup.category].rect, '#22c55e');
                 box(course.box[other].rect, '#f87171');
                 box(course.parallel[other].rect, '#f87171');
                 const nx = lastStatus?.next;
@@ -604,7 +648,7 @@ export default function GameView({
               mctx.save();
               mctx.translate((tr.x / W) * mw, (tr.z / D) * mh);
               mctx.rotate(-yaw);
-              mctx.fillStyle = '#2f9bff';
+              mctx.fillStyle = BLUE;
               mctx.strokeStyle = '#fff';
               mctx.lineWidth = 1.5;
               mctx.beginPath();
@@ -619,6 +663,16 @@ export default function GameView({
             }
           }
         };
+        gs.car.root.position.copy(curP);
+        gs.car.root.quaternion.copy(curQ);
+        gs.camera.position.set(curP.x, curP.y + 3, curP.z + 7);
+        gs.camera.lookAt(curP);
+        try {
+          await gs.renderer.compileAsync(gs.scene, gs.camera);
+        } catch {
+          gs.renderer.compile(gs.scene, gs.camera);
+        }
+        if (disposed) return;
         raf = requestAnimationFrame(frame);
         setReady(true);
 
@@ -646,6 +700,10 @@ export default function GameView({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const setWheelAngle = (a: number) => {
+    if (wheelSvgRef.current) wheelSvgRef.current.style.transform = `rotate(${a}rad)`;
+  };
 
   // ---- Steering wheel: rotate by dragging around its centre (540° lock to lock). ----
   const MAX_WHEEL = Math.PI * 1.5;
@@ -699,22 +757,24 @@ export default function GameView({
     },
   });
 
-  const mins = Math.floor(hud.time / 60);
-  const secs = String(hud.time % 60).padStart(2, '0');
-  const glass = 'bg-black/35 backdrop-blur-md border border-white/10';
+  const top = 'calc(max(0.6rem, env(safe-area-inset-top)) + 86px)';
+  const onOff = (on: boolean, kind: 'blue' | 'red' | 'amber' = 'blue') =>
+    on ? (kind === 'red' ? 'bg-red-500 text-white' : kind === 'amber' ? 'bg-amber-400 text-slate-900' : 'text-white') : panel;
+  const onStyle = (on: boolean, kind: 'blue' | 'red' | 'amber' = 'blue') => (on && kind === 'blue' ? { background: BLUE } : undefined);
 
   return (
-    <div className="absolute inset-0 select-none overflow-hidden bg-[#0b0f17]" style={{ touchAction: 'none' }}>
+    <div className="absolute inset-0 select-none overflow-hidden bg-[#dfe7f1]" style={{ touchAction: 'none' }}>
       <div ref={hostRef} className="absolute inset-0" />
 
       {!ready && (
-        <div className="absolute inset-0 grid place-items-center bg-[#0b0f17] text-white">
-          <div className="w-64 text-center">
-            <div className="mb-3 text-lg font-semibold">{t('Автодром юкланмоқда', 'Загрузка автодрома')}</div>
-            <div className="h-2 overflow-hidden rounded-full bg-white/10">
-              <div className="h-full rounded-full bg-lime-400 transition-all" style={{ width: `${Math.round(progress * 100)}%` }} />
+        <div className="absolute inset-0 grid place-items-center bg-[#f2f4f7] text-slate-900">
+          <div className="w-72 text-center">
+            <div className="mb-1 text-lg font-semibold">{t('Автодром тайёрланмоқда', 'Готовим автодром')}</div>
+            <div className="mb-4 text-sm text-slate-500">{baseProfile.name} · {setup.category}</div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
+              <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(progress * 100)}%`, background: BLUE }} />
             </div>
-            {error && <div className="mt-3 text-sm text-red-400">{error}</div>}
+            {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
           </div>
         </div>
       )}
@@ -723,125 +783,105 @@ export default function GameView({
         <>
           {/* Side mirrors (drawn into the canvas; these are just the frames) */}
           {mirrors && (['left', 'right'] as const).map((k) => {
-            const r = mirrorRects(vp.w, vp.h, portrait)[k];
+            const r = mirrorRects(vp.w)[k];
             return (
               <div
                 key={k}
-                className="pointer-events-none absolute rounded-xl border-2 border-white/60 shadow-[0_4px_14px_rgba(0,0,0,0.5)]"
-                style={{ left: r.x - 2, top: r.y - 2, width: r.w + 4, height: r.h + 4 }}
+                className="pointer-events-none absolute rounded-2xl border-[3px] border-white shadow-[0_4px_14px_rgba(15,23,42,0.35)]"
+                style={{ left: r.x - 3, top: r.y - 3, width: r.w + 6, height: r.h + 6 }}
               />
             );
           })}
 
           {/* Top bar */}
           <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between pt-[max(0.6rem,env(safe-area-inset-top))]" style={{ paddingLeft: 'max(0.75rem, env(safe-area-inset-left))', paddingRight: 'max(0.75rem, env(safe-area-inset-right))' }}>
-            <div className={`pointer-events-auto flex items-start gap-2 ${portrait ? 'flex-col' : ''}`}>
-              <button onClick={onExit} className={`grid h-11 w-11 place-items-center rounded-full text-white ${glass}`} aria-label="Orqaga">
+            <div className="pointer-events-auto flex items-start gap-2">
+              <button onClick={onExit} className={`${roundBtn} ${panel}`} aria-label="Orqaga">
                 <ArrowLeft className="h-5 w-5" />
               </button>
-              <canvas ref={miniRef} width={92} height={106} className={`rounded-xl border border-white/25 shadow-lg ${portrait ? 'h-[80px] w-[70px]' : ''}`} />
+              <canvas ref={miniRef} width={92} height={106} className="h-[80px] w-[70px] rounded-2xl border-2 border-white shadow-[0_2px_12px_rgba(15,23,42,0.22)]" />
             </div>
 
-            <div className={`flex h-[74px] w-[74px] flex-col items-center justify-center rounded-full text-white ${glass} ${portrait ? 'absolute left-1/2 -translate-x-1/2' : ''}`}>
-              <svg viewBox="0 0 100 100" className="absolute h-[74px] w-[74px] -rotate-[225deg]">
-                <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="6" strokeDasharray="207 400" strokeLinecap="round" />
-                <circle cx="50" cy="50" r="44" fill="none" stroke="#7ee03a" strokeWidth="6" strokeDasharray={`${Math.min(hud.kmh / 60, 1) * 207} 400`} strokeLinecap="round" />
+            <div className={`absolute left-1/2 flex h-[70px] w-[70px] -translate-x-1/2 flex-col items-center justify-center rounded-full ${panel}`}>
+              <svg viewBox="0 0 100 100" className="absolute h-[70px] w-[70px] -rotate-[225deg]">
+                <circle cx="50" cy="50" r="44" fill="none" stroke="#e2e8f0" strokeWidth="6" strokeDasharray="207 400" strokeLinecap="round" />
+                <circle ref={arcRef} cx="50" cy="50" r="44" fill="none" stroke={BLUE} strokeWidth="6" strokeDasharray="0 400" strokeLinecap="round" />
               </svg>
-              <div className="text-2xl font-bold tabular-nums leading-none">{hud.kmh}</div>
-              <div className="mt-0.5 text-[9px] opacity-70">km/soat</div>
+              <div ref={speedRef} className="text-[22px] font-semibold tabular-nums leading-none">0</div>
+              <div className="mt-0.5 text-[9px] text-slate-500">km/soat</div>
             </div>
 
-            <div className={`pointer-events-auto flex items-start gap-2 ${portrait ? 'flex-col' : ''}`}>
-              {!portrait && (
-                <>
-                  <div className={`rounded-full px-3 py-2 text-sm font-semibold tabular-nums text-white ${glass}`}>
-                    {mins}:{secs}
-                  </div>
-                  {exam && (
-                    <div className={`rounded-full px-3 py-2 text-sm font-semibold text-white ${glass} ${hud.penalty > 0 ? 'text-red-300' : ''}`}>
-                      {t('Жарима', 'Штраф')}: {hud.penalty}
-                    </div>
-                  )}
-                </>
+            <div className="pointer-events-auto flex items-start gap-2">
+              <div className={`flex h-11 items-center rounded-full px-3.5 text-sm font-semibold tabular-nums ${panel}`}>
+                <span ref={timeRef}>0:00</span>
+              </div>
+              {exam && (
+                <div className={`flex h-11 items-center gap-1 rounded-full px-3.5 text-sm font-semibold ${panel}`}>
+                  {t('Жарима', 'Штраф')} <span ref={penRef} className="tabular-nums">0</span>
+                </div>
               )}
-              <button onClick={() => setCam((c) => (c === 'chase' ? 'cockpit' : c === 'cockpit' ? 'top' : 'chase'))} className={`grid h-11 w-11 place-items-center rounded-full text-white ${glass}`} aria-label="Kamera">
+              <button onClick={() => setCam((c) => (c === 'chase' ? 'cockpit' : c === 'cockpit' ? 'top' : 'chase'))} className={`${roundBtn} ${panel}`} aria-label="Kamera">
                 <Camera className="h-5 w-5" />
               </button>
-              <button onClick={() => setMenu(true)} className={`grid h-11 w-11 place-items-center rounded-full text-white ${glass}`} aria-label="Menu">
+              <button onClick={() => setMenu(true)} className={`${roundBtn} ${panel}`} aria-label="Menu">
                 <Menu className="h-5 w-5" />
               </button>
             </div>
           </div>
 
-          {portrait && (
-            <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 gap-2" style={{ top: 'calc(max(0.6rem, env(safe-area-inset-top)) + 84px)' }}>
-              <div className={`rounded-full px-3 py-1.5 text-sm font-semibold tabular-nums text-white ${glass}`}>
-                {mins}:{secs}
-              </div>
-              {exam && (
-                <div className={`rounded-full px-3 py-1.5 text-sm font-semibold text-white ${glass} ${hud.penalty > 0 ? 'text-red-300' : ''}`}>
-                  {t('Жарима', 'Штраф')}: {hud.penalty}
-                </div>
+          {exam && (examView.where || examView.next) && (
+            <div className={`pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full px-3.5 py-1.5 text-xs font-semibold ${panel}`} style={{ top }}>
+              {examView.where ? (
+                <span style={{ color: BLUE }}>{t(examView.where.uz, examView.where.ru)}</span>
+              ) : (
+                examView.next && (
+                  <>
+                    <span className="text-slate-500">{t('Кейинги', 'Далее')}: </span>
+                    <span style={{ color: BLUE }}>{t(examView.next.uz, examView.next.ru)}</span>
+                  </>
+                )
               )}
             </div>
           )}
 
-          {exam && !examView.where && examView.next && (
-            <div
-              className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md"
-              style={{ top: portrait ? 'calc(max(0.6rem, env(safe-area-inset-top)) + 122px)' : 'calc(max(0.6rem, env(safe-area-inset-top)) + 80px)' }}
-            >
-              {t('Кейинги', 'Далее')}: <span className="text-amber-300">{t(examView.next.uz, examView.next.ru)}</span>
-            </div>
-          )}
-
-          {exam && examView.where && (
-            <div
-              className={`pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-black bg-amber-300/90`}
-              style={{ top: portrait ? 'calc(max(0.6rem, env(safe-area-inset-top)) + 122px)' : 'calc(max(0.6rem, env(safe-area-inset-top)) + 80px)' }}
-            >
-              {t(examView.where.uz, examView.where.ru)}
+          {toast && (
+            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(220,38,38,0.35)]" style={{ top: `calc(${top} + 36px)` }}>
+              {toast}
             </div>
           )}
 
           {startFlash && (
             <div className="pointer-events-none absolute inset-x-0 top-[30%] text-center">
-              <div className="inline-block rounded-2xl bg-lime-400 px-6 py-3 text-3xl font-black tracking-wider text-black shadow-2xl">START</div>
-              <div className="mx-auto mt-3 w-[min(90vw,24rem)] rounded-xl bg-black/60 px-4 py-2 text-sm text-white">
+              <div className="inline-block rounded-2xl px-6 py-2.5 text-2xl font-bold tracking-wider text-white shadow-xl" style={{ background: BLUE }}>START</div>
+              <div className={`mx-auto mt-3 w-[min(90vw,26rem)] rounded-2xl px-4 py-2.5 text-sm ${panel}`}>
                 {t('Камар, двигатель, қўл тормози, чап чироқ — 30 сония ичида қўзғалинг', 'Ремень, двигатель, ручник, левый поворотник — тронуться за 30 секунд')}
               </div>
             </div>
           )}
 
           {examView.alarm && (
-            <div className="pointer-events-none absolute inset-x-0 top-[38%] text-center">
-              <div className="inline-flex animate-pulse items-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-lg font-bold text-white shadow-2xl">
-                <TriangleAlert className="h-6 w-6" />
+            <div className="pointer-events-none absolute inset-x-0 top-[36%] text-center">
+              <div className="inline-flex animate-pulse items-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-base font-semibold text-white shadow-xl">
+                <TriangleAlert className="h-5 w-5" />
                 {t('АВАРИЯ! Тўхтанг ва авария чироғини ёқинг', 'АВАРИЯ! Остановитесь и включите аварийку')}
               </div>
             </div>
           )}
 
           {examView.finishTodo && (
-            <div className="pointer-events-none absolute inset-x-0 top-[34%] text-center">
-              <div className="mx-auto inline-block rounded-2xl bg-black/70 px-5 py-3 text-left text-sm text-white">
-                <div className="mb-1 font-bold">{t('Финиш: тўхтагач', 'Финиш: после остановки')}</div>
+            <div className="pointer-events-none absolute inset-x-0 top-[32%] text-center">
+              <div className={`mx-auto inline-block rounded-2xl px-5 py-3 text-left text-sm ${panel}`}>
+                <div className="mb-1 font-semibold">{t('Финиш: тўхтагач', 'Финиш: после остановки')}</div>
                 {[
                   [examView.finishTodo.handbrake, t('Қўл тормозини тортинг', 'Затяните ручник')],
                   [examView.finishTodo.engine, t('Двигателни ўчиринг', 'Заглушите двигатель')],
                   [examView.finishTodo.belt, t('Камарни ечинг', 'Отстегните ремень')],
                 ].map(([ok, label], i) => (
-                  <div key={i} className={ok ? 'text-lime-300' : 'text-white/80'}>
+                  <div key={i} className={ok ? 'font-medium text-emerald-600' : 'text-slate-600'}>
                     {ok ? '✓' : '○'} {label}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {toast && (
-            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full bg-red-600/85 px-4 py-2 text-sm font-semibold text-white shadow-lg" style={{ top: portrait ? 'calc(max(0.6rem, env(safe-area-inset-top)) + 156px)' : 'calc(max(0.6rem, env(safe-area-inset-top)) + 112px)' }}>
-              {toast}
             </div>
           )}
 
@@ -852,89 +892,56 @@ export default function GameView({
             onPointerMove={onWheelMove}
             onPointerUp={onWheelUp}
             onPointerCancel={onWheelUp}
-            className={`absolute bottom-3 ${portrait ? 'h-[132px] w-[132px]' : 'h-[150px] w-[150px]'}`}
+            className="absolute bottom-3 h-[146px] w-[146px]"
             style={{ left: 'max(1rem, env(safe-area-inset-left))', marginBottom: 'env(safe-area-inset-bottom)', touchAction: 'none' }}
           >
-            <svg viewBox="0 0 100 100" className="h-full w-full drop-shadow-[0_6px_14px_rgba(0,0,0,0.5)]" style={{ transform: `rotate(${wheelAngle}rad)` }}>
-              <defs>
-                <radialGradient id="rim" cx="50%" cy="40%" r="60%">
-                  <stop offset="0%" stopColor="#3a4250" />
-                  <stop offset="100%" stopColor="#11151c" />
-                </radialGradient>
-              </defs>
-              <circle cx="50" cy="50" r="43" fill="none" stroke="url(#rim)" strokeWidth="10" />
-              <circle cx="50" cy="50" r="47.5" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-              <path d="M10 56 Q50 44 90 56 L86 66 Q50 58 14 66 Z" fill="#1a1f28" />
-              <path d="M42 62 L58 62 L56 90 L44 90 Z" fill="#1a1f28" />
-              <circle cx="50" cy="58" r="12" fill="#232a35" stroke="#3b4554" strokeWidth="1.5" />
-              <path d="M43 57 h4 v-2 h6 v2 h4 l-1 3 h-3 v2 h-6 v-2 h-3 z" fill="#d9a441" />
-              <rect x="47" y="4" width="6" height="9" rx="2" fill="#2f9bff" />
+            <svg ref={wheelSvgRef} viewBox="0 0 100 100" className="h-full w-full drop-shadow-[0_4px_10px_rgba(15,23,42,0.35)]">
+              <circle cx="50" cy="50" r="43" fill="none" stroke="#1e293b" strokeWidth="9" />
+              <circle cx="50" cy="50" r="43" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" />
+              <path d="M10 55 Q50 45 90 55 L87 64 Q50 57 13 64 Z" fill="#334155" />
+              <path d="M43 61 L57 61 L55 89 L45 89 Z" fill="#334155" />
+              <circle cx="50" cy="57" r="12.5" fill="#1e293b" stroke="#475569" strokeWidth="1.2" />
+              <circle cx="50" cy="57" r="5" fill={BLUE} />
+              <rect x="47" y="3.5" width="6" height="9" rx="2" fill={BLUE} />
             </svg>
           </div>
 
-          {/* Mirrors, indicators, hazard */}
-          <div
-            className={`absolute flex gap-2 ${portrait ? 'flex-col' : 'flex-row'}`}
-            style={portrait
-              ? { right: 'max(0.75rem, env(safe-area-inset-right))', top: '45%' }
-              : { left: '50%', transform: 'translateX(-50%)', bottom: 'calc(12px + env(safe-area-inset-bottom))' }}
-          >
-            {([
-              { key: 'mirrors', on: mirrors, icon: <FlipHorizontal2 className="h-5 w-5" />, act: () => setMirrors((v) => !v), label: 'Ko\'zgu' },
-              { key: 'left', on: signal === -1 && !hazard, icon: <ArrowBigLeft className="h-5 w-5" />, act: () => { setHazard(false); setSignalState((v) => (v === -1 ? 0 : -1)); }, label: 'Chap' },
-              { key: 'hazard', on: hazard, icon: <TriangleAlert className="h-5 w-5" />, act: () => { setHazard((v) => !v); setSignalState(0); }, label: 'Avariya' },
-              { key: 'right', on: signal === 1 && !hazard, icon: <ArrowBigRight className="h-5 w-5" />, act: () => { setHazard(false); setSignalState((v) => (v === 1 ? 0 : 1)); }, label: "O'ng" },
-            ]).map((b) => (
-              <button
-                key={b.key}
-                onClick={() => { soundRef.current?.unlock(); b.act(); }}
-                aria-label={b.label}
-                className={`grid h-11 w-11 place-items-center rounded-full border text-white backdrop-blur-md transition-colors ${
-                  b.on ? (b.key === 'mirrors' ? 'border-sky-300/70 bg-sky-500/70' : b.key === 'hazard' ? 'border-red-300/70 bg-red-500/75' : 'border-amber-200/70 bg-amber-500/80') : 'border-white/10 bg-black/35'
-                }`}
-              >
-                {b.icon}
-              </button>
-            ))}
-          </div>
-
-          {/* Belt, engine, parking brake */}
-          <div
-            className={`absolute flex gap-2 ${portrait ? 'flex-col' : 'flex-row'}`}
-            style={portrait
-              ? { left: 'max(0.75rem, env(safe-area-inset-left))', top: '45%' }
-              : { left: 'calc(max(1rem, env(safe-area-inset-left)) + 168px)', bottom: 'calc(12px + env(safe-area-inset-bottom))' }}
-          >
-            {([
-              { key: 'belt', on: belt, icon: <BeltIcon className="h-5 w-5" />, act: () => setBelt((v) => !v), label: 'Kamar' },
-              { key: 'engine', on: engineOn, icon: <KeyRound className="h-5 w-5" />, act: () => setEngineOn((v) => !v), label: 'Dvigatel' },
-              { key: 'hand', on: handbrake, icon: <CircleParking className="h-5 w-5" />, act: () => setHandbrake((v) => !v), label: "Qo'l tormozi" },
-            ]).map((b) => (
-              <button
-                key={b.key}
-                onClick={() => { soundRef.current?.unlock(); b.act(); }}
-                aria-label={b.label}
-                className={`grid h-11 w-11 place-items-center rounded-full border text-white backdrop-blur-md transition-colors ${
-                  b.on ? (b.key === 'hand' ? 'border-red-300/70 bg-red-500/75' : 'border-lime-200/70 bg-lime-500/75') : 'border-white/10 bg-black/35'
-                }`}
-              >
-                {b.icon}
-              </button>
-            ))}
+          {/* Car controls (belt, engine, parking brake) above the light switches */}
+          <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5" style={{ bottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
+            <div className="flex gap-1.5">
+              {([
+                { key: 'belt', on: belt, icon: <BeltIcon className="h-5 w-5" />, act: () => setBelt((v) => !v), label: 'Kamar', kind: 'blue' as const },
+                { key: 'engine', on: engineOn, icon: <KeyRound className="h-5 w-5" />, act: () => setEngineOn((v) => !v), label: 'Dvigatel', kind: 'blue' as const },
+                { key: 'hand', on: handbrake, icon: <CircleParking className="h-5 w-5" />, act: () => setHandbrake((v) => !v), label: "Qo'l tormozi", kind: 'red' as const },
+              ]).map((b) => (
+                <button key={b.key} onClick={() => { soundRef.current?.unlock(); b.act(); }} aria-label={b.label} className={`${roundBtn} ${onOff(b.on, b.kind)}`} style={onStyle(b.on, b.kind)}>
+                  {b.icon}
+                </button>
+              ))}
+            </div>
+            <div className="mx-0.5 h-7 w-px bg-white/70" />
+            <div className="flex gap-1.5">
+              {([
+                { key: 'mirrors', on: mirrors, icon: <FlipHorizontal2 className="h-5 w-5" />, act: () => setMirrors((v) => !v), label: "Ko'zgu", kind: 'blue' as const },
+                { key: 'left', on: signal === -1 && !hazard, icon: <ArrowBigLeft className="h-5 w-5" />, act: () => { setHazard(false); setSignalState((v) => (v === -1 ? 0 : -1)); }, label: 'Chap', kind: 'amber' as const },
+                { key: 'hazard', on: hazard, icon: <TriangleAlert className="h-5 w-5" />, act: () => { setHazard((v) => !v); setSignalState(0); }, label: 'Avariya', kind: 'red' as const },
+                { key: 'right', on: signal === 1 && !hazard, icon: <ArrowBigRight className="h-5 w-5" />, act: () => { setHazard(false); setSignalState((v) => (v === 1 ? 0 : 1)); }, label: "O'ng", kind: 'amber' as const },
+              ]).map((b) => (
+                <button key={b.key} onClick={() => { soundRef.current?.unlock(); b.act(); }} aria-label={b.label} className={`${roundBtn} ${onOff(b.on, b.kind)}`} style={onStyle(b.on, b.kind)}>
+                  {b.icon}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Gear selector */}
-          <div
-            className={`absolute flex gap-1.5 rounded-2xl p-1.5 ${glass} ${portrait ? 'flex-row' : 'bottom-6 flex-col'}`}
-            style={portrait
-              ? { right: 'max(1rem, env(safe-area-inset-right))', bottom: 'calc(150px + env(safe-area-inset-bottom))' }
-              : { right: 'calc(max(1rem, env(safe-area-inset-right)) + 212px)', marginBottom: 'env(safe-area-inset-bottom)' }}
-          >
+          <div className={`absolute bottom-4 flex flex-col gap-1 rounded-2xl p-1.5 ${panel}`} style={{ right: 'calc(max(1rem, env(safe-area-inset-right)) + 176px)', marginBottom: 'env(safe-area-inset-bottom)' }}>
             {(['R', 'N', '1', '2'] as Gear[]).map((g) => (
               <button
                 key={g}
                 onClick={() => setGear(g)}
-                className={`${portrait ? 'h-10 w-11' : 'h-9 w-10'} rounded-xl text-sm font-bold transition-colors ${gear === g ? (g === 'R' ? 'bg-red-500 text-white' : 'bg-lime-400 text-black') : 'bg-white/10 text-white'}`}
+                className={`h-9 w-10 rounded-xl text-sm font-semibold transition-colors ${gear === g ? 'text-white' : 'text-slate-600 active:bg-slate-100'}`}
+                style={gear === g ? { background: g === 'R' ? '#ef4444' : BLUE } : undefined}
               >
                 {g}
               </button>
@@ -943,45 +950,56 @@ export default function GameView({
 
           {/* Pedals */}
           <div className="absolute bottom-3 flex items-end gap-3" style={{ right: 'max(1rem, env(safe-area-inset-right))', marginBottom: 'env(safe-area-inset-bottom)' }}>
-            <div {...pedal('brake')} className="group flex h-[96px] w-[92px] flex-col items-center justify-end" style={{ touchAction: 'none' }}>
-              <div className="flex h-[78px] w-[86px] flex-col justify-evenly rounded-xl border border-white/15 bg-gradient-to-b from-[#3b4250] to-[#1b2029] px-3 shadow-lg group-active:scale-95 group-active:from-red-500/80">
-                {[0, 1, 2, 3].map((i) => <div key={i} className="h-1.5 rounded bg-black/40" />)}
+            <div {...pedal('brake')} className="group flex flex-col items-center" style={{ touchAction: 'none' }}>
+              <div className={`flex h-[78px] w-[84px] flex-col justify-evenly rounded-2xl px-3 transition-transform group-active:scale-95 ${panel}`}>
+                {[0, 1, 2, 3].map((i) => <div key={i} className="h-1.5 rounded-full bg-slate-300 group-active:bg-red-400" />)}
               </div>
-              <div className="mt-1 text-[10px] font-semibold text-white/80">{t('Тормоз', 'Тормоз')}</div>
+              <div className="mt-1 text-[10px] font-semibold text-white drop-shadow">{t('Тормоз', 'Тормоз')}</div>
             </div>
-            <div {...pedal('throttle')} className="group flex h-[132px] w-[70px] flex-col items-center justify-end" style={{ touchAction: 'none' }}>
-              <div className="flex h-[114px] w-[62px] flex-col justify-evenly rounded-xl border border-white/15 bg-gradient-to-b from-[#3b4250] to-[#1b2029] px-3 shadow-lg group-active:scale-95 group-active:from-lime-500/80">
-                {[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="h-1.5 rounded bg-black/40" />)}
+            <div {...pedal('throttle')} className="group flex flex-col items-center" style={{ touchAction: 'none' }}>
+              <div className={`flex h-[112px] w-[60px] flex-col justify-evenly rounded-2xl px-3 transition-transform group-active:scale-95 ${panel}`}>
+                {[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="h-1.5 rounded-full bg-slate-300 group-active:bg-blue-500" />)}
               </div>
-              <div className="mt-1 text-[10px] font-semibold text-white/80">Gaz</div>
+              <div className="mt-1 text-[10px] font-semibold text-white drop-shadow">Gaz</div>
             </div>
           </div>
         </>
       )}
 
+      {/* Phones: landscape only */}
+      {rotateBlock && (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-[#f2f4f7] p-8 text-center text-slate-900">
+          <div>
+            <Smartphone className="mx-auto mb-4 h-14 w-14 rotate-90" style={{ color: BLUE }} />
+            <div className="mb-1 text-lg font-semibold">{t('Телефонни ётқизиб ушланг', 'Поверните телефон горизонтально')}</div>
+            <div className="text-sm text-slate-500">{t('Автодром фақат горизонтал ҳолатда ўйналади', 'Автодром работает только в горизонтальном положении')}</div>
+          </div>
+        </div>
+      )}
+
       {/* Pause menu */}
       {menu && (
-        <div className="absolute inset-0 grid place-items-center bg-black/60 backdrop-blur-sm">
-          <div className="w-[min(92vw,28rem)] rounded-3xl bg-[#121826] p-5 text-white shadow-2xl">
-            <h2 className="mb-4 text-lg font-bold">{t('Автодром', 'Автодром')} · {baseProfile.name} · {setup.category}</h2>
+        <div className="absolute inset-0 grid place-items-center bg-slate-900/40 p-4">
+          <div className="max-h-[92vh] w-[min(92vw,28rem)] overflow-y-auto rounded-[24px] bg-white p-5 text-slate-900 shadow-2xl">
+            <h2 className="mb-4 text-lg font-semibold">{baseProfile.name} · {t('тоифа', 'категория')} {setup.category}</h2>
             {colorHex !== null && (
               <>
-                <p className="mb-2 text-sm opacity-70">{t('Машина ранги', 'Цвет машины')}</p>
+                <p className="mb-2 text-sm text-slate-500">{t('Машина ранги', 'Цвет машины')}</p>
                 <div className="mb-5 flex flex-wrap gap-3">
                   {COLORS.map((c) => (
                     <button
                       key={c.name}
                       onClick={() => setColorHex(c.hex)}
-                      className={`h-10 w-10 rounded-full border-2 ${colorHex === c.hex ? 'border-lime-400' : 'border-white/20'}`}
-                      style={{ background: `#${c.hex.toString(16).padStart(6, '0')}` }}
+                      className="h-10 w-10 rounded-full border border-slate-200"
+                      style={{ background: `#${c.hex.toString(16).padStart(6, '0')}`, boxShadow: colorHex === c.hex ? `0 0 0 3px #fff, 0 0 0 5px ${BLUE}` : undefined }}
                       aria-label={c.name}
                     />
                   ))}
                 </div>
               </>
             )}
-            <div className="mb-4 flex gap-3">
-              <button onClick={() => setMuted((m) => !m)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 py-3 text-sm font-semibold">
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              <button onClick={() => setMuted((m) => !m)} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 py-3 text-sm font-semibold">
                 {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 {muted ? t('Овоз ўчиқ', 'Звук выкл') : t('Овоз ёқиқ', 'Звук вкл')}
               </button>
@@ -990,23 +1008,26 @@ export default function GameView({
                   resetRef.current();
                   setMenu(false);
                 }}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 py-3 text-sm font-semibold"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 py-3 text-sm font-semibold"
               >
                 <RotateCcw className="h-4 w-4" />
                 {t('Қайта бошлаш', 'Заново')}
               </button>
             </div>
-            <button onClick={onSetup} className="mb-4 w-full rounded-xl bg-white/10 py-3 text-sm font-semibold">
+            <button onClick={onSetup} className="mb-4 w-full rounded-2xl bg-slate-100 py-3 text-sm font-semibold">
               {t('Машина ва режимни алмаштириш', 'Сменить машину и режим')}
             </button>
-            <p className="mb-3 text-[10px] leading-snug opacity-50">
-              3D: {baseProfile.credit}. Trees, textures — Poly Haven (CC0).
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setMenu(false)} className="flex-1 rounded-xl bg-lime-400 py-3 font-semibold text-black">
+            {!touch && (
+              <p className="mb-3 text-xs leading-relaxed text-slate-500">
+                {t('Клавиатура', 'Клавиатура')}: ↑↓←→ · 1 2 N R · B {t('камар', 'ремень')} · E {t('двигатель', 'двигатель')} · H {t('қўл тормози', 'ручник')} · Q / F {t('бурилиш', 'поворотники')} · Z {t('авария', 'аварийка')} · C {t('камера', 'камера')}
+              </p>
+            )}
+            <p className="mb-4 text-[10px] leading-snug text-slate-400">3D: {baseProfile.credit}. Trees, textures — Poly Haven (CC0).</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setMenu(false)} className="rounded-2xl py-3 font-semibold text-white" style={{ background: BLUE }}>
                 {t('Давом этиш', 'Продолжить')}
               </button>
-              <button onClick={onExit} className="flex-1 rounded-xl bg-white/10 py-3 font-semibold">
+              <button onClick={onExit} className="rounded-2xl bg-slate-100 py-3 font-semibold">
                 {t('Чиқиш', 'Выйти')}
               </button>
             </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useT } from '@/hooks/useT';
 import { VEHICLES, type Category } from '../engine/vehicles';
 import { preloadGame } from '../engine/preload';
@@ -22,7 +22,10 @@ export const COLORS = [
   { name: 'Kulrang', hex: 0x4a4f57 },
 ];
 
+const BLUE = '#2563EB';
 const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
+const card = 'rounded-[20px] bg-white text-left shadow-[0_1px_2px_rgba(15,23,42,0.06)] transition-shadow';
+const ring = (on: boolean) => (on ? { boxShadow: `0 0 0 2px ${BLUE}` } : undefined);
 
 /** Before driving: category, car, colour and whether penalties are counted. */
 export default function SetupScreen({ initial, onStart, onBack }: { initial: GameSetup | null; onStart: (s: GameSetup) => void; onBack: () => void }) {
@@ -47,80 +50,90 @@ export default function SetupScreen({ initial, onStart, onBack }: { initial: Gam
     }
   };
 
-  const chip = (on: boolean) =>
-    `rounded-2xl border px-4 py-3 text-left transition-colors ${on ? 'border-lime-400 bg-lime-400/10' : 'border-white/10 bg-white/5 active:bg-white/10'}`;
-
   return (
-    <div className="absolute inset-0 overflow-y-auto bg-[#0b0f17] text-white">
-      <div className="mx-auto w-full max-w-lg px-4 pb-8" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <div className="mb-4 flex items-center gap-3">
-          <button onClick={onBack} className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/5" aria-label="Orqaga">
+    <div className="absolute inset-0 overflow-y-auto bg-[#f2f4f7] text-slate-900">
+      <div className="mx-auto w-full max-w-3xl px-4 pb-8" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+        <div className="mb-5 flex items-center gap-3">
+          <button onClick={onBack} className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-[0_1px_2px_rgba(15,23,42,0.08)]" aria-label="Orqaga">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-xl font-bold">{t('Автодром', 'Автодром')}</h1>
+          <div>
+            <h1 className="text-xl font-semibold leading-tight">{t('Автодром', 'Автодром')}</h1>
+            <div className="text-sm text-slate-500">{t('Амалий имтиҳон машқи', 'Тренировка практического экзамена')}</div>
+          </div>
         </div>
 
-        <p className="mb-2 text-sm text-white/60">{t('Тоифа', 'Категория')}</p>
-        <div className="mb-5 grid grid-cols-2 gap-3">
-          {(['B', 'C'] as Category[]).map((c) => (
-            <button key={c} onClick={() => pickCategory(c)} className={chip(category === c)}>
-              <div className="text-2xl font-bold">{c}</div>
-              <div className="text-xs text-white/60">{c === 'B' ? t('Енгил машина', 'Легковой автомобиль') : t('Юк машинаси', 'Грузовой автомобиль')}</div>
-            </button>
-          ))}
-        </div>
-
-        <p className="mb-2 text-sm text-white/60">{t('Машина', 'Машина')}</p>
-        <div className="mb-5 grid gap-2">
-          {cars.map((v) => (
-            <button
-              key={v.id}
-              onClick={() => {
-                setVehicleId(v.id);
-                setColor(v.defaultColor);
-              }}
-              className={`${chip(car?.id === v.id)} flex items-center justify-between`}
-            >
-              <span className="font-semibold">{v.name}</span>
-              {car?.id === v.id && <Check className="h-5 w-5 text-lime-400" />}
-            </button>
-          ))}
-        </div>
-
-        {car && car.defaultColor !== null && (
-          <>
-            <p className="mb-2 text-sm text-white/60">{t('Ранги', 'Цвет')}</p>
-            <div className="mb-5 flex flex-wrap gap-3">
-              {COLORS.map((c) => (
-                <button
-                  key={c.name}
-                  onClick={() => setColor(c.hex)}
-                  className={`h-10 w-10 rounded-full border-2 ${color === c.hex ? 'border-lime-400' : 'border-white/20'}`}
-                  style={{ background: hex(c.hex) }}
-                  aria-label={c.name}
-                />
+        <div className="grid gap-5 md:grid-cols-2">
+          <div>
+            <p className="mb-2 text-[13px] font-medium text-slate-500">{t('Тоифа', 'Категория')}</p>
+            <div className="mb-5 grid grid-cols-2 gap-2.5">
+              {(['B', 'C'] as Category[]).map((c) => (
+                <button key={c} onClick={() => pickCategory(c)} className={`${card} px-4 py-3.5`} style={ring(category === c)}>
+                  <div className="text-2xl font-semibold" style={category === c ? { color: BLUE } : undefined}>{c}</div>
+                  <div className="text-xs text-slate-500">{c === 'B' ? t('Енгил машина', 'Легковой автомобиль') : t('Юк машинаси', 'Грузовой автомобиль')}</div>
+                </button>
               ))}
             </div>
-          </>
-        )}
 
-        <p className="mb-2 text-sm text-white/60">{t('Режим', 'Режим')}</p>
-        <div className="mb-6 grid gap-2">
-          <button onClick={() => setMode('exam')} className={chip(mode === 'exam')}>
-            <div className="font-semibold">{t('Имтиҳон (жарима баллари билан)', 'Экзамен (со штрафными баллами)')}</div>
-            <div className="mt-0.5 text-xs text-white/60">
-              {t('Ҳар бир хато учун жарима ёзилади. 100 баллга етса — ўтмадингиз.', 'За каждую ошибку — штраф. 100 баллов — не сдал.')}
+            <p className="mb-2 text-[13px] font-medium text-slate-500">{t('Режим', 'Режим')}</p>
+            <div className="grid gap-2.5">
+              <button onClick={() => setMode('exam')} className={`${card} px-4 py-3.5`} style={ring(mode === 'exam')}>
+                <div className="font-semibold">{t('Имтиҳон', 'Экзамен')}</div>
+                <div className="mt-0.5 text-xs text-slate-500">
+                  {t('Ҳар бир хато учун жарима ёзилади. 100 баллга етса — ўтмадингиз.', 'За каждую ошибку — штраф. 100 баллов — не сдал.')}
+                </div>
+              </button>
+              <button onClick={() => setMode('free')} className={`${card} px-4 py-3.5`} style={ring(mode === 'free')}>
+                <div className="font-semibold">{t('Эркин ҳайдаш', 'Свободная езда')}</div>
+                <div className="mt-0.5 text-xs text-slate-500">{t('Жаримасиз, машқларни бемалол ўрганинг', 'Без штрафов, тренируйтесь спокойно')}</div>
+              </button>
             </div>
-          </button>
-          <button onClick={() => setMode('free')} className={chip(mode === 'free')}>
-            <div className="font-semibold">{t('Эркин ҳайдаш (жаримасиз)', 'Свободная езда (без штрафов)')}</div>
-            <div className="mt-0.5 text-xs text-white/60">{t('Машқларни бемалол ўрганинг', 'Тренируйтесь без подсчёта баллов')}</div>
-          </button>
+          </div>
+
+          <div>
+            <p className="mb-2 text-[13px] font-medium text-slate-500">{t('Машина', 'Машина')}</p>
+            <div className="mb-5 grid grid-cols-2 gap-2.5">
+              {cars.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    setVehicleId(v.id);
+                    setColor(v.defaultColor);
+                  }}
+                  className={`${card} overflow-hidden`}
+                  style={ring(car?.id === v.id)}
+                >
+                  <div className="aspect-[16/9] bg-gradient-to-b from-slate-50 to-slate-100">
+                    <img src={`${import.meta.env.BASE_URL}game/cars/${v.id}.webp`} alt="" className="h-full w-full object-contain" loading="lazy" />
+                  </div>
+                  <div className="px-3 py-2.5 text-sm font-semibold">{v.name}</div>
+                </button>
+              ))}
+            </div>
+
+            {car && car.defaultColor !== null && (
+              <>
+                <p className="mb-2 text-[13px] font-medium text-slate-500">{t('Ранги', 'Цвет')}</p>
+                <div className="mb-2 flex flex-wrap gap-3">
+                  {COLORS.map((c) => (
+                    <button
+                      key={c.name}
+                      onClick={() => setColor(c.hex)}
+                      className="h-9 w-9 rounded-full border border-slate-200"
+                      style={{ background: hex(c.hex), boxShadow: color === c.hex ? `0 0 0 3px #f2f4f7, 0 0 0 5px ${BLUE}` : undefined }}
+                      aria-label={c.name}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         <button
           onClick={() => car && onStart({ category, vehicleId: car.id, color: car.defaultColor === null ? null : color, mode })}
-          className="w-full rounded-2xl bg-lime-400 py-4 text-base font-bold text-black active:scale-[0.99]"
+          className="mt-6 h-14 w-full rounded-2xl text-base font-semibold text-white active:scale-[0.99]"
+          style={{ background: BLUE }}
         >
           {t('Бошлаш', 'Начать')}
         </button>

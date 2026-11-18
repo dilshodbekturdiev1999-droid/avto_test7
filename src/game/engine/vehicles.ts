@@ -79,9 +79,60 @@ export const COBALT: VehicleProfile = {
   suspension: { rest: 0.22, stiffness: 34, travel: 0.2, maxForce: 12000 },
 };
 
-/** Cars prepared by prepare_car.py write their measured rig into car_<id>.json;
- *  these are the fallbacks and the handling numbers. */
-export const VEHICLES: VehicleProfile[] = [COBALT];
+// Prepared by blender/prepare_car.py: car_<id>.json holds the measured rig
+// (wheels, bumpers, size) and replaces the geometry numbers below; what stays
+// from here is the handling.
+export const MALIBU: VehicleProfile = {
+  ...COBALT,
+  id: 'malibu',
+  name: 'Chevrolet Malibu',
+  file: 'car_malibu',
+  credit: 'Chevrolet Malibu 2021 — ItsDiyor (Sketchfab, CC BY 4.0)',
+  defaultColor: 0x0d0e10,
+  mass: 1450,
+  engineForce: 2500,
+  maxSteer: 0.54,
+  eye: [-0.38, 1.2, 0.3],
+  mirror: { x: 1.02, y: 1.0, z: -0.5 },
+  chaseDist: 6.8,
+};
+
+export const GENTRA: VehicleProfile = {
+  ...COBALT,
+  id: 'gentra',
+  name: 'Chevrolet Gentra',
+  file: 'car_gentra',
+  credit: 'Gentra — uzbek_supra (Sketchfab, CC BY 4.0)',
+  defaultColor: 0x0d0e10,
+  mass: 1250,
+  engineForce: 2250,
+  eye: [-0.36, 1.22, 0.32],
+  mirror: { x: 0.98, y: 1.0, z: -0.45 },
+};
+
+export const ISUZU: VehicleProfile = {
+  ...COBALT,
+  id: 'isuzu',
+  name: 'Isuzu Elf',
+  category: 'C',
+  file: 'car_isuzu',
+  credit: 'Isuzu Elf series — Romanov13 (Sketchfab, CC BY 4.0)',
+  defaultColor: null,
+  mass: 4500,
+  engineForce: 6200,
+  driven: 'rear',
+  maxSteer: 0.62,
+  gearLimit: { R: 10, N: 0, '1': 20, '2': 45 },
+  gearForce: { R: 0.8, N: 0, '1': 1, '2': 0.6 },
+  brakeForce: 110,
+  eye: [-0.45, 1.85, -1.95],
+  mirror: { x: 1.15, y: 1.7, z: -2.15 },
+  chaseDist: 10.5,
+  chaseHeight: 3.6,
+  suspension: { rest: 0.26, stiffness: 46, travel: 0.22, maxForce: 45000 },
+};
+
+export const VEHICLES: VehicleProfile[] = [COBALT, MALIBU, GENTRA, ISUZU];
 
 /** Rig measured by prepare_car.py (wheel hubs, bumpers, width, height). */
 export interface CarRigJson {

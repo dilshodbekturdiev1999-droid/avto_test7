@@ -92,6 +92,8 @@ button.sa-li:active, a.sa-li:active { background: var(--sa-sub); }
 .sa-b3 b { display: block; font-size: 16.5px; font-weight: 600; letter-spacing: -0.01em; }
 .sa-b3 small { display: block; color: var(--sa-muted); font-size: 13px; }
 .sa-b3 .sa-cnt { position: absolute; top: 14px; right: 14px; }
+.sa-b3.sa-wide { min-height: 0; flex-direction: row; align-items: center; gap: 14px; padding: 16px; }
+.sa-b3.sa-wide > svg.chev { font-size: 18px; color: var(--sa-muted); }
 
 /* signs */
 .sa-sgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }

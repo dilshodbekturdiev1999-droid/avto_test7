@@ -154,6 +154,15 @@ const Index = () => {
     </div>
   );
 
+  // the Avtodrom tile opens at once: fetch the game in the background after the page settles
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void import('@/game/AvtodromPage');
+      void import('@/game/engine/preload').then((m) => m.preloadGame());
+    }, 2500);
+    return () => window.clearTimeout(id);
+  }, []);
+
   return (
     <SiteShell tab="home" title={t('Асосий', 'Главная')} deskTitle={`${t('Хайрли кун', 'Добрый день')}, ${login}`}>
       {isError && (
@@ -163,8 +172,13 @@ const Index = () => {
       )}
       <div className="grid lg:grid-cols-[1.1fr_1fr] gap-2.5 lg:gap-4 items-stretch">
         {hero}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {four}
+          <button type="button" className="sa-b3 sa-wide" onClick={() => navigate('/avtodrom')}>
+            <SIcon name="wheel" variant="duo" />
+            <span className="flex-1 min-w-0"><b>{t('Автодром', 'Автодром')}</b><small>{t('B ва C тоифа · амалий имтиҳон жарима баллари билан', 'Категории B и C · практический экзамен со штрафами')}</small></span>
+            <SIcon name="alt-arrow-right" variant="line" className="chev" />
+          </button>
         </div>
       </div>
       <div className="grid lg:grid-cols-[1.1fr_1fr] gap-x-4">
