@@ -230,6 +230,8 @@ export default function GameView({
         if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { gs, phys, input: input.current, course, exam: () => examRun, profile, quality };
         const sound = new EngineSound(profile);
         soundRef.current = sound;
+        // the "start" tap already unlocked the page's audio: sound from the first frame
+        sound.unlock();
         const skids = createSkids(gs.scene, assets.skidTexture, quality !== 'low');
         let clock = 0;
         let lastBlink = false;

@@ -161,9 +161,15 @@ class Engine extends AudioWorkletProcessor {
     const inv = 1 / n;
     const step = rpm / 120 / sampleRate; // one cycle = two revolutions
     for (let s = 0; s < out.length; s++) {
-      let noise = this.noiseLp.run(Math.random() * 2 - 1) * (0.35 + 0.65 * load);
+      // intake noise: idleNoise share at closed throttle (presets without it keep 0.35)
+      const idleNoise = p.idleNoise ?? 0.35;
+      let noise = this.noiseLp.run(Math.random() * 2 - 1) * (idleNoise + (1 - idleNoise) * load);
       if (rpm < 25) noise = 0;
-      const crank = this.crankLp.run(0.25 * Math.random()) * p.roughness;
+      // evenFire presets: tiny zero-mean crank jitter, cylinders fire exactly 1/n apart
+      // (smooth petrol idle; `lope` adds a small fixed offset for a little character); the others keep their lumpy offset (the diesel's character)
+      const crank = p.evenFire
+        ? this.crankLp.run(Math.random() - 0.5) * 0.02 * p.roughness + (p.lope ?? 0)
+        : this.crankLp.run(0.25 * Math.random()) * p.roughness;
       let block = 0;
       let intake = 0;
       let pipeIn = 0;

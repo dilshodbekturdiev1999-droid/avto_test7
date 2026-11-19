@@ -17,25 +17,30 @@ interface EngineSpec {
   /** cabin / exhaust tone: low-pass base and how much the throttle opens it */
   tone: number;
   toneOpen: number;
+  /** how much the revs open the tone (Hz at redline); default 1200 */
+  toneRpm?: number;
+  /** engine level at idle with no load; default 0.5 */
+  idleLevel?: number;
   turbo: number; // 0 = none
   model: Record<string, number | number[]>;
 }
 
 const SPECS: Record<EngineKind, EngineSpec> = {
-  // Cobalt 1.5 (B15D2): plain four, a bit buzzy at the top
+  // Cobalt 1.5 (B15D2): plain four, built like the Isuzu preset (long pipes and muffler,
+  // low tone) so it hums instead of gurgling; even firing, no intake hiss at idle
   petrol4: {
-    idle: 820, redline: 6200, perKmh: { '1': 170, '2': 78, R: 230 }, volume: 1.0, tone: 1500, toneOpen: 2600, turbo: 0,
-    model: { cylinders: 4, intake: 100, exhaust: 100, extractor: 100, intakeOpen: 0.25, intakeClosed: 0.95, exhaustOpen: 0.25, exhaustClosed: 0.95, ignition: 0.016, pipe: 128, pipeReflect: 0.1, muffler: [10, 15, 20, 25], action: 0.25, outlet: 5, intakeNoiseHz: 9000, blockHz: 125, roughness: 1, misfire: 0.08, knock: 0, mixBlock: 0.6, mixIntake: 0.35, mixOutlet: 1.0, trim: 1 },
+    idle: 820, redline: 6200, perKmh: { '1': 170, '2': 78, R: 230 }, volume: 1.3, tone: 850, toneOpen: 1900, toneRpm: 700, idleLevel: 0.3, turbo: 0,
+    model: { cylinders: 4, intake: 120, exhaust: 130, extractor: 140, intakeOpen: 0.27, intakeClosed: 0.95, exhaustOpen: 0.26, exhaustClosed: 0.95, ignition: 0.014, pipe: 220, pipeReflect: 0.1, muffler: [26, 36, 48, 60], action: 0.3, outlet: 9, intakeNoiseHz: 5000, blockHz: 120, roughness: 0.5, misfire: 0.03, knock: 0, mixBlock: 0.8, mixIntake: 0.25, mixOutlet: 1.0, trim: 1, evenFire: 1, lope: 0.01, idleNoise: 0.05 },
   },
-  // Tracker 1.2 turbo three: uneven three-cylinder beat, turbo
+  // Tracker 1.2 turbo three: soft three-cylinder thrum, no whistle
   turbo3: {
-    idle: 780, redline: 6000, perKmh: { '1': 150, '2': 70, R: 210 }, volume: 1.05, tone: 1300, toneOpen: 2300, turbo: 1,
-    model: { cylinders: 3, intake: 90, exhaust: 85, extractor: 120, intakeOpen: 0.28, intakeClosed: 0.95, exhaustOpen: 0.22, exhaustClosed: 0.96, ignition: 0.018, pipe: 170, pipeReflect: 0.12, muffler: [12, 19, 27, 36], action: 0.28, outlet: 6, intakeNoiseHz: 7500, blockHz: 110, roughness: 1.5, misfire: 0.12, knock: 0, mixBlock: 0.7, mixIntake: 0.3, mixOutlet: 1.0, trim: 1 },
+    idle: 780, redline: 6000, perKmh: { '1': 150, '2': 70, R: 210 }, volume: 1.45, tone: 800, toneOpen: 1800, toneRpm: 700, idleLevel: 0.3, turbo: 0,
+    model: { cylinders: 3, intake: 120, exhaust: 125, extractor: 150, intakeOpen: 0.28, intakeClosed: 0.95, exhaustOpen: 0.25, exhaustClosed: 0.95, ignition: 0.015, pipe: 230, pipeReflect: 0.1, muffler: [28, 39, 52, 66], action: 0.3, outlet: 9, intakeNoiseHz: 4500, blockHz: 105, roughness: 0.5, misfire: 0.03, knock: 0, mixBlock: 0.8, mixIntake: 0.22, mixOutlet: 1.0, trim: 1, evenFire: 1, idleNoise: 0.05 },
   },
-  // Malibu 1.5 turbo four: smooth, deeper and quieter, long muffler
+  // Malibu 1.5 turbo four: smooth, deep and quiet, long muffler, no whistle
   turbo4: {
-    idle: 720, redline: 6000, perKmh: { '1': 125, '2': 62, R: 190 }, volume: 0.8, tone: 1050, toneOpen: 1800, turbo: 0.8,
-    model: { cylinders: 4, intake: 110, exhaust: 120, extractor: 130, intakeOpen: 0.22, intakeClosed: 0.96, exhaustOpen: 0.2, exhaustClosed: 0.97, ignition: 0.02, pipe: 190, pipeReflect: 0.08, muffler: [20, 28, 37, 46], action: 0.32, outlet: 8, intakeNoiseHz: 6000, blockHz: 100, roughness: 0.6, misfire: 0.04, knock: 0, mixBlock: 0.5, mixIntake: 0.25, mixOutlet: 1.0, trim: 1 },
+    idle: 720, redline: 6000, perKmh: { '1': 125, '2': 62, R: 190 }, volume: 1.2, tone: 750, toneOpen: 1600, toneRpm: 700, idleLevel: 0.3, turbo: 0,
+    model: { cylinders: 4, intake: 130, exhaust: 140, extractor: 150, intakeOpen: 0.25, intakeClosed: 0.96, exhaustOpen: 0.22, exhaustClosed: 0.96, ignition: 0.016, pipe: 250, pipeReflect: 0.08, muffler: [30, 42, 56, 72], action: 0.32, outlet: 10, intakeNoiseHz: 4500, blockHz: 95, roughness: 0.4, misfire: 0.02, knock: 0, mixBlock: 0.75, mixIntake: 0.2, mixOutlet: 1.0, trim: 1, evenFire: 1, idleNoise: 0.05 },
   },
   // Isuzu Elf 3.0 turbo diesel: slow, deep, injector clatter
   diesel4: {
@@ -44,9 +49,50 @@ const SPECS: Record<EngineKind, EngineSpec> = {
   },
 };
 
+// One AudioContext for the whole page. Browsers only let audio start inside a user
+// gesture, so it is created / resumed by the "start" tap on the setup screen
+// (primeAudio) and by every later tap or key press; it is never closed, so the next
+// game reuses it without waiting for another tap.
+let sharedCtx: AudioContext | null = null;
+let listening = false;
+
+function resumeShared() {
+  const c = sharedCtx;
+  if (c && c.state !== 'running' && c.state !== 'closed') void c.resume().catch(() => undefined);
+}
+
+/** Create or resume the page's AudioContext. Call from a user gesture (tap / click / key). */
+export function primeAudio(): AudioContext | null {
+  try {
+    if (!sharedCtx || sharedCtx.state === 'closed') {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return null;
+      sharedCtx = new Ctx({ latencyHint: 'interactive' });
+      // iOS can drop to 'interrupted' (calls, Siri) or 'suspended': pick up again when possible
+      sharedCtx.onstatechange = () => {
+        if (document.visibilityState === 'visible') resumeShared();
+      };
+    }
+    resumeShared();
+    if (!listening) {
+      listening = true;
+      const opts = { capture: true, passive: true } as AddEventListenerOptions;
+      for (const ev of ['pointerdown', 'touchend', 'keydown', 'click']) window.addEventListener(ev, resumeShared, opts);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') resumeShared();
+      });
+    }
+    return sharedCtx;
+  } catch {
+    return null;
+  }
+}
+
 export class EngineSound {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  private out: AudioNode | null = null;
+  private squealSrc: AudioBufferSourceNode | null = null;
   private muted = false;
   private spec: EngineSpec;
   private gearLimit: Record<Gear, number>;
@@ -81,12 +127,12 @@ export class EngineSound {
   /** Audio can only start after a user gesture. */
   unlock() {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') void this.ctx.resume();
+      resumeShared();
       return;
     }
     try {
-      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new Ctx({ latencyHint: 'interactive' });
+      const ctx = primeAudio();
+      if (!ctx) return;
       this.ctx = ctx;
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -14;
@@ -97,6 +143,7 @@ export class EngineSound {
       master.gain.value = 1;
       master.connect(comp).connect(ctx.destination);
       this.master = master;
+      this.out = comp;
 
       // engine chain: source -> tone low-pass -> gain -> master
       const tone = ctx.createBiquadFilter();
@@ -163,6 +210,7 @@ export class EngineSound {
       sg.gain.value = 0;
       src.connect(bp).connect(sg).connect(master);
       src.start();
+      this.squealSrc = src;
       this.squeal = sg;
       this.squealFilter = bp;
     } catch {
@@ -336,9 +384,9 @@ export class EngineSound {
     this.load += (load - this.load) * Math.min(1, dt * 8);
 
     const r = this.rpm;
-    const level = r <= 0 ? 0 : Math.min(1, r / 400) * (0.5 + 0.35 * (r / S.redline) + 0.35 * this.load) * S.volume;
+    const level = r <= 0 ? 0 : Math.min(1, r / 400) * ((S.idleLevel ?? 0.5) + 0.35 * (r / S.redline) + 0.35 * this.load) * S.volume;
     this.engGain.gain.setTargetAtTime(level, now, 0.05);
-    this.tone.frequency.setTargetAtTime(S.tone + this.load * S.toneOpen + (r / S.redline) * 1200, now, 0.06);
+    this.tone.frequency.setTargetAtTime(S.tone + this.load * S.toneOpen + (r / S.redline) * (S.toneRpm ?? 1200), now, 0.06);
     if (this.rpmParam && this.loadParam) {
       this.rpmParam.setTargetAtTime(r, now, 0.03);
       this.loadParam.setTargetAtTime(this.load, now, 0.05);
@@ -361,10 +409,12 @@ export class EngineSound {
   }
 
   dispose() {
+    // the page's AudioContext stays open for the next game: only this car's nodes go
     this.osc.forEach((o) => o.stop());
     this.whistle?.stop();
+    this.squealSrc?.stop();
     this.node?.disconnect();
-    void this.ctx?.close();
+    this.out?.disconnect();
     this.ctx = null;
   }
 }

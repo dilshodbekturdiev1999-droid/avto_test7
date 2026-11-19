@@ -6,7 +6,7 @@
 /** Bump when anything in public/game changes, so devices fetch the new files. */
 import { ASSETS_LOCAL } from './platform';
 
-export const GAME_VERSION = '2026-11-20a';
+export const GAME_VERSION = '2026-11-21a';
 const CACHE = `avtodrom-${GAME_VERSION}`;
 const BASE = `${import.meta.env.BASE_URL}game/`;
 

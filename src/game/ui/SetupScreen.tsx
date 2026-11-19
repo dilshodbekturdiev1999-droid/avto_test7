@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { primeAudio } from '../engine/sound';
 import { ArrowLeft } from 'lucide-react';
 import { useT } from '@/hooks/useT';
 import { VEHICLES, type Category } from '../engine/vehicles';
@@ -147,7 +148,7 @@ export default function SetupScreen({ initial, onStart, onBack }: { initial: Gam
         </div>
 
         <button
-          onClick={() => car && onStart({ category, vehicleId: car.id, color: car.defaultColor === null ? null : color, mode })}
+          onClick={() => { primeAudio(); if (car) onStart({ category, vehicleId: car.id, color: car.defaultColor === null ? null : color, mode }); }}
           className="mt-6 h-14 w-full rounded-2xl text-base font-semibold text-white active:scale-[0.99]"
           style={{ background: BLUE }}
         >

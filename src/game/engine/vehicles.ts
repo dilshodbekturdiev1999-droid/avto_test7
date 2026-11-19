@@ -121,7 +121,7 @@ export const MALIBU: VehicleProfile = {
   name: 'Chevrolet Malibu',
   file: 'car_malibu',
   credit: 'Chevrolet Malibu 2021 — ItsDiyor (Sketchfab, CC BY 4.0)',
-  defaultColor: 0x0d0e10,
+  defaultColor: 0xeeeeea,
   mass: 1450,
   engineForce: 2300,
   engine: 'turbo4',

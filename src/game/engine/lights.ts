@@ -160,6 +160,7 @@ export function buildTrafficLights(scene: THREE.Scene, box: Rect, ctl: LightCont
   const root = new THREE.Group();
   const poleMat = new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.7, roughness: 0.38 });
   const darkMat = new THREE.MeshStandardMaterial({ color: 0x15171a, metalness: 0.2, roughness: 0.55 });
+  const visorMat = new THREE.MeshStandardMaterial({ color: 0x15171a, metalness: 0.2, roughness: 0.55, side: THREE.DoubleSide });
   const boardMat = new THREE.MeshStandardMaterial({ color: 0x0f1012, roughness: 0.7 });
   const rimMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5 });
   const lens = lensTexture();
@@ -180,7 +181,8 @@ export function buildTrafficLights(scene: THREE.Scene, box: Rect, ctl: LightCont
   const housingGeo = new THREE.BoxGeometry(0.3, 0.3, 0.22);
   const boardGeo = new THREE.BoxGeometry(0.52, 1.12, 0.02);
   const rimGeo = new THREE.BoxGeometry(0.56, 1.16, 0.015);
-  const visorGeo = new THREE.CylinderGeometry(0.135, 0.135, 0.2, 18, 1, true, -Math.PI / 2, Math.PI);
+  // open half-tube; thetaStart PI/2 + rotation.x PI/2 puts the shell ABOVE the lens (a sun hood)
+  const visorGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.24, 18, 1, true, Math.PI / 2, Math.PI);
   const discGeo = new THREE.CircleGeometry(0.105, 28);
   const ringGeo = new THREE.TorusGeometry(0.112, 0.012, 6, 28);
   for (const p of place) {
@@ -204,9 +206,9 @@ export function buildTrafficLights(scene: THREE.Scene, box: Rect, ctl: LightCont
       const h = new THREE.Mesh(housingGeo, darkMat);
       h.position.set(0, y, 0);
       h.castShadow = true;
-      const visor = new THREE.Mesh(visorGeo, darkMat);
+      const visor = new THREE.Mesh(visorGeo, visorMat);
       visor.rotation.x = Math.PI / 2;
-      visor.position.set(0, y + 0.005, 0.2);
+      visor.position.set(0, y, 0.22);
       const ring = new THREE.Mesh(ringGeo, darkMat);
       ring.position.set(0, y, 0.112);
       const mat = new THREE.MeshBasicMaterial({ color: OFF[c], map: lens, toneMapped: false });

@@ -3,6 +3,7 @@
 // trees and the Cobalt rig.
 import * as THREE from 'three';
 import type { GameAssets } from './assets';
+import { rebuildBarriers } from './barrier';
 import { buildTrees } from './trees';
 import { COBALT, type VehicleProfile } from './vehicles';
 import { gameFile } from './preload';
@@ -202,6 +203,37 @@ ${kind === 'asphalt' ? road : lawn}
   return m;
 }
 
+/** Campus lawn: break the 7 m texture repeat with large, soft colour patches (world space). */
+function lawnVariation(m: THREE.MeshStandardMaterial) {
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vLawnW;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvLawnW = (modelMatrix * vec4(transformed, 1.0)).xz;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+varying vec2 vLawnW;
+float lawnN(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = fract(sin(dot(i, vec2(127.1, 311.7))) * 43758.5453);
+  float b = fract(sin(dot(i + vec2(1.0, 0.0), vec2(127.1, 311.7))) * 43758.5453);
+  float c = fract(sin(dot(i + vec2(0.0, 1.0), vec2(127.1, 311.7))) * 43758.5453);
+  float d = fract(sin(dot(i + vec2(1.0, 1.0), vec2(127.1, 311.7))) * 43758.5453);
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}`,
+      )
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+float lawnV = lawnN(vLawnW / 23.0) * 0.6 + lawnN(vLawnW / 6.5) * 0.4;
+diffuseColor.rgb *= mix(vec3(0.84, 0.86, 0.8), vec3(1.08, 1.06, 0.98), lawnV);`,
+      );
+  };
+  m.customProgramCacheKey = () => 'campus-lawn';
+}
+
 export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality: Quality, profile: VehicleProfile = COBALT): GameScene {
   const renderer = new THREE.WebGLRenderer({ antialias: quality !== 'low', powerPreference: 'high-performance' });
   const dpr = window.devicePixelRatio || 1;
@@ -330,22 +362,37 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
       if (old.test(o.name)) o.visible = false;
     });
     const campus = assets.campus.scene;
+    // soft sun shadows of the buildings and trees: a multiply layer on the ground whose vertex
+    // colour is the light that is left (build_campus.py)
+    const shadowMat = new THREE.MeshBasicMaterial({
+      vertexColors: true, transparent: true, depthWrite: false, blending: THREE.MultiplyBlending,
+      premultipliedAlpha: true, toneMapped: false, fog: false,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4,
+    });
     campus.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
       mesh.castShadow = false;
       mesh.receiveShadow = false;
       const m = mesh.material as THREE.MeshStandardMaterial;
+      if (/Shadow/.test(m.name)) {
+        mesh.material = shadowMat;
+        mesh.renderOrder = 1;
+        return;
+      }
       if (m.map) m.map.anisotropy = Math.min(maxAniso, quality === 'low' ? 2 : 8);
       if (/Fence|Gate$/.test(m.name)) {
         m.alphaTest = 0.5;
         m.transparent = false;
       }
-      // matte facades: windows glow softly from inside, no sky mirror
-      m.envMapIntensity = /Glass|Logo|Sign/.test(m.name) ? 0.15 : 0.5;
+      if (/Lawn/.test(m.name)) lawnVariation(m);
+      // clipped hedge: a calmer, deeper green than the raw texture
+      if (/Hedge/.test(m.name)) m.color.setRGB(0.7, 0.76, 0.62);
+      // windows glow softly from inside (no sky mirror); walls and trims catch a little sky
+      m.envMapIntensity = /Glass|Logo|Sign/.test(m.name) ? 0.15 : 0.8;
       // layers laid on top of something (windows on walls, paths on the lawn) win the depth test
       // at any distance instead of flickering with what is under them
-      const layer = /Glass|Logo|Sign$/.test(m.name) ? 2 : /Zebra|White/.test(m.name) ? 3 : /Paving|Plaza|Road|Flowers/.test(m.name) ? 1 : 0;
+      const layer = /Glass|Logo|Sign$/.test(m.name) ? 2 : /Zebra|Mark/.test(m.name) ? 3 : /Paving|Plaza|Road|Flowers/.test(m.name) ? 1 : 0;
       if (layer) {
         m.polygonOffset = true;
         m.polygonOffsetFactor = -layer;
@@ -367,6 +414,8 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
     o.position.z += p.z - cz;
   });
   scene.add(staticRoot);
+  // level-crossing barriers rebuilt in place (the map's arm floated beside its post)
+  rebuildBarriers(staticRoot, scene);
 
   // Realtime car shadow onto the baked asphalt.
   const W = meta.width;
@@ -464,13 +513,24 @@ export function buildScene(canvasHost: HTMLElement, assets: GameAssets, quality:
     else if (m.name !== 'Glass' && m.name !== 'Paint' && m.envMapIntensity > 0.8) m.envMapIntensity = 0.8;
   });
   carRoot.add(model);
-  const wheels = ['fl', 'fr', 'rl', 'rr'].map((k) => {
+  const wheels = ['fl', 'fr', 'rl', 'rr'].map((k, i) => {
     const w = model.getObjectByName('wheel_' + k)!;
     // Re-parent each wheel under a steering pivot so spin and steer compose cleanly:
     // child 0 spins (tyre, rim, disc), the calliper (child 1) only steers.
     const pivot = new THREE.Object3D();
     pivot.position.copy(w.position);
     model.add(pivot);
+    // The game puts the pivot on the rig's hub. When the wheel node sits off the hub
+    // sideways (the Isuzu's dual rear wheels: the node is the centre of the whole rear
+    // group, not of the tyre pair) keep the mesh where the model has it, so the tyres
+    // stay under the body. Every other car has the node exactly on the hub (offset 0).
+    const hubX = profile.wheels?.[i]?.x;
+    const dx = hubX === undefined ? 0 : w.position.x - hubX;
+    if (Math.abs(dx) > 0.02) {
+      const s = w.scale.x || 1;
+      if ((w as THREE.Mesh).isMesh) (w as THREE.Mesh).geometry.translate(dx / s, 0, 0);
+      else w.children.forEach((c) => (c.position.x += dx / s));
+    }
     w.position.set(0, 0, 0);
     pivot.add(w);
     const cal = model.getObjectByName('caliper_' + k);
