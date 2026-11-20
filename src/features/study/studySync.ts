@@ -7,6 +7,7 @@ import { invokeFunction } from '@/integrations/supabase/functionsClient';
 import { getDeviceId } from '@/lib/deviceId';
 import { safeStorage } from '@/lib/safeStorage';
 import { isOnline, onNetworkChange } from '@/lib/network';
+import { hydrateExamDate } from '@/features/celebrate/examDateSync';
 import { replaceStudyState, setStudyChangeHandler, type SavedKind } from './studyState';
 
 type QueuedOp =
@@ -65,6 +66,7 @@ export async function flushStudyQueue(): Promise<void> {
 
 /** After sign-in: push local changes first, then take what the server holds. */
 export async function hydrateStudyFromServer(): Promise<void> {
+  void hydrateExamDate();
   await flushStudyQueue();
   if (readQueue().length > 0) return; // unsent changes would be lost by replacing the local copy
   const { session_token, device_id } = session();

@@ -97,6 +97,23 @@ Deno.serve(async (req) => {
         return json({ data: { ok: true, applied: ops.length } })
       }
 
+      case 'get-exam-date': {
+        const { data, error } = await db.from('app_users').select('exam_date').eq('id', userId).maybeSingle()
+        if (error) throw error
+        return json({ data: { exam_date: data?.exam_date ?? null } })
+      }
+
+      case 'set-exam-date': {
+        const raw = body.exam_date
+        const value = raw === '' || raw == null ? null : raw
+        if (value !== null && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(value)))) {
+          return json({ error: 'invalid_date' }, 400)
+        }
+        const { error } = await db.from('app_users').update({ exam_date: value }).eq('id', userId)
+        if (error) throw error
+        return json({ data: { ok: true } })
+      }
+
       default:
         return json({ error: 'invalid_action' }, 400)
     }

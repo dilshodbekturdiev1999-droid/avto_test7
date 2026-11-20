@@ -10,7 +10,8 @@ import { useDuelList } from '@/hooks/useDuels';
 import { useUserStats } from '@/hooks/useUserStats';
 import { useT } from '@/hooks/useT';
 import { getMistakeIds, getSavedCount, useStudyVersion } from '@/features/study/studyState';
-import { celebrateAllLessonsOnce, celebrateExamDayIfDue, getExamDate } from '@/features/celebrate/celebrate';
+import { celebrateAllLessonsOnce, celebrateExamDayIfDue } from '@/features/celebrate/celebrate';
+import { useExamDate } from '@/features/celebrate/examDateSync';
 import { YAKUNIY_PATH } from '@/features/nav/routes';
 import { safeStorage } from '@/lib/safeStorage';
 
@@ -56,7 +57,7 @@ const Index = () => {
     else celebrateExamDayIfDue();
   }, [pct, total]);
   const answered = stats ? stats.correct_answers + stats.wrong_answers : null;
-  const examDate = getExamDate();
+  const examDate = useExamDate();
   const daysLeft = examDate ? Math.ceil((new Date(`${examDate}T00:00:00`).getTime() - new Date(new Date().toDateString()).getTime()) / 86400000) : null;
   const mistakes = getMistakeIds().length;
   const invites = duelData?.incoming?.length ?? 0;

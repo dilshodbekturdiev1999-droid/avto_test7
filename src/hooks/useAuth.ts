@@ -5,6 +5,7 @@ import { invokeFunction } from '@/integrations/supabase/functionsClient';
 import { getDeviceId } from '@/lib/deviceId';
 import { hydrateProgressFromServer } from '@/lib/progress';
 import { clearStudyState } from '@/features/study/studyState';
+import { clearExamDate } from '@/features/celebrate/examDateSync';
 import { clearStudyQueue, hydrateStudyFromServer } from '@/features/study/studySync';
 import { safeStorage } from '@/lib/safeStorage';
 import { useUserEvent } from '@/hooks/usePresence';
@@ -102,6 +103,7 @@ export function setAccessInfo(
 export function clearSession(): void {
   clearStudyState();
   clearStudyQueue();
+  clearExamDate();
   safeStorage.removeItem('session_token');
   safeStorage.removeItem('login');
   safeStorage.removeItem('user_id');

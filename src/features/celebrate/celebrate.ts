@@ -1,6 +1,7 @@
 // Celebrations: which moment plays which scene, the words in each language, and the
 // small "already shown" memory so a once-only scene does not repeat.
 import { safeStorage } from '@/lib/safeStorage';
+import { EXAM_DATE_KEY, saveExamDate } from './examDateSync';
 
 export type CelebrationKind = 'passed' | 'failed' | 'final' | 'q200' | 'q1200' | 'examday' | 'alllessons';
 
@@ -73,7 +74,6 @@ export function sceneText(kind: CelebrationKind, lang: 'uz' | 'ru'): Words {
 
 // ---- once-only scenes
 const ALL_DONE_KEY = 'celebrated_all_lessons';
-const EXAM_DATE_KEY = 'exam_date';
 const EXAM_SHOWN_KEY = 'exam_day_shown';
 
 const today = () => {
@@ -92,9 +92,9 @@ export function getExamDate(): string {
   return safeStorage.getItem(EXAM_DATE_KEY) ?? '';
 }
 
+// Saved on the server too, so the date follows the student to every device.
 export function setExamDate(date: string): void {
-  if (date) safeStorage.setItem(EXAM_DATE_KEY, date);
-  else safeStorage.removeItem(EXAM_DATE_KEY);
+  saveExamDate(date);
 }
 
 /** On the exam day, the first time the app is opened: wish good luck. */

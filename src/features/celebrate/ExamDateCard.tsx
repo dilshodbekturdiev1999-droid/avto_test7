@@ -1,12 +1,12 @@
-import { useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 import { useT } from '@/hooks/useT';
-import { getExamDate, setExamDate } from './celebrate';
+import { setExamDate } from './celebrate';
+import { useExamDate } from './examDateSync';
 
 /** "When is your exam?" On that day the app opens with a good-luck wish. */
 export function ExamDateCard() {
   const t = useT();
-  const [date, setDate] = useState(getExamDate);
+  const date = useExamDate();
   return (
     <label className="flex items-center gap-3 rounded-[calc(var(--radius)+2px)] border border-border bg-card px-4 py-3">
       <CalendarDays className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -21,7 +21,6 @@ export function ExamDateCard() {
         value={date}
         min={new Date().toISOString().slice(0, 10)}
         onChange={(e) => {
-          setDate(e.target.value);
           setExamDate(e.target.value);
         }}
         className="rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground"
