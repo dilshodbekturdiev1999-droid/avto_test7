@@ -15,7 +15,7 @@ interface QuestionViewProps {
   headerAction?: ReactNode;
 }
 
-const ANSWER_LABELS = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З'];
+const ANSWER_LABELS = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8'];
 const FALLBACK_IMAGES = [placeholder1, placeholder2, placeholder3];
 
 export function QuestionView({ question, selectedAnswer, onSelectAnswer, headerAction }: QuestionViewProps) {

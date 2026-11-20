@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Trophy, RotateCcw, Wrench, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Trophy, RotateCcw, Wrench, CheckCircle2 } from 'lucide-react';
 import { useTopic, useQuestionsWithAnswers } from '@/hooks/useSupabase';
 import { QuestionView } from '@/components/QuestionView';
 import { QuestionNumbers } from '@/components/QuestionNumbers';
@@ -393,23 +393,6 @@ const TestPage = () => {
             setCurrentIndex(i);
           }}
         />
-      }
-      footer={
-        <>
-          <Button variant="outline" onClick={handlePrevious} disabled={currentIndex === 0} className="flex-1">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            {t('Олдинги', 'Назад')}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => handleNext()}
-            disabled={currentIndex >= totalQuestions - 1}
-            className="flex-1"
-          >
-            {t('Кейингиси', 'Далее')}
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </>
       }
     >
       <QuestionView

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Trophy, RotateCcw, Play, Wrench, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Trophy, RotateCcw, Play, Wrench, CheckCircle2 } from 'lucide-react';
 import { QuestionView } from '@/components/QuestionView';
 import { TestShell } from '@/components/TestShell';
 import { recordAnswer } from '@/features/study/studyState';
@@ -456,23 +456,6 @@ const YakuniyTestPage = () => {
             setCurrentIndex(i);
           }}
         />
-      }
-      footer={
-        <>
-          <Button variant="outline" onClick={handlePrevious} disabled={currentIndex === 0} className="flex-1">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            {t('Олдинги', 'Назад')}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => handleNext()}
-            disabled={currentIndex >= totalQuestions - 1}
-            className="flex-1"
-          >
-            {t('Кейингиси', 'Далее')}
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </>
       }
     >
       <QuestionView

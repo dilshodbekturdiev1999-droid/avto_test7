@@ -313,23 +313,6 @@ const AllQuestionsPage = () => {
       }
       progress={{ current: session.index + 1, total }}
       numbers={<QuestionNumbers questions={questions} currentIndex={session.index} answers={session.answers} onSelect={goTo} />}
-      footer={
-        <>
-          <Button variant="outline" className="flex-1" disabled={session.index === 0} onClick={() => goTo(session.index - 1)}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {t('Олдинги', 'Назад')}
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1"
-            disabled={session.index >= total - 1}
-            onClick={() => goTo(session.index + 1)}
-          >
-            {t('Кейингиси', 'Далее')}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </>
-      }
     >
       <p className="mb-1 truncate px-1 text-xs text-muted-foreground">
         {entry.lessonTitle} › {entry.topicTitle} › №{entry.position}
